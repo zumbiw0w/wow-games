@@ -12,8 +12,8 @@
     recordes: [{ id: 'tempo', rotulo: 'O Botão: menor tempo', melhor: 'menor', valor: ev => ev.tipo === 'fim' ? ev.tempo : null, fmt: tempo }] });
   P.registrarJogo({ id: 'tempo', nome: 'Pare no Tempo', icone: '⏱️', xp: ev => 10 + (ev.erro < 0.1 ? 15 : ev.erro < 0.5 ? 5 : 0),
     recordes: [{ id: 'erro', rotulo: 'Pare no Tempo: menor erro', melhor: 'menor', valor: ev => ev.erro, fmt: seg }] });
-  P.registrarJogo({ id: 'premios', nome: 'Máquina de Prêmios', icone: '🎁', xp: ev => 5 + ev.raridade * 5 + (ev.novo ? 10 : 0),
-    recordes: [{ id: 'descobertos', rotulo: 'Prêmios descobertos', melhor: 'maior', valor: ev => ev.descobertos, fmt: v => v + '/20' }] });
+  P.registrarJogo({ id: 'premios', nome: 'Máquina de Prêmios', icone: '🎁', xp: ev => ev.tipo === 'evolucao' ? 0 : 5 + ev.raridade * 5 + (ev.novo ? 10 : 0),
+    recordes: [{ id: 'descobertos', rotulo: 'Prêmios descobertos', melhor: 'maior', valor: ev => ev.descobertos, fmt: v => v + '/30' }] });
   P.registrarJogo({ id: 'matematica', nome: 'Matemática Relâmpago', icone: '🧮', xp: ev => 50 + Math.min(50, Math.floor(ev.pontos / 60)),
     recordes: [{ id: 'tempo', rotulo: 'Matemática: menor tempo', melhor: 'menor', valor: ev => ev.tempo, fmt: tempo },
                { id: 'pontos', rotulo: 'Matemática: maior pontuação', melhor: 'maior', valor: ev => ev.pontos, fmt: num }] });
@@ -24,7 +24,7 @@
   P.registrarJogo({ id: 'caso001', nome: 'O Caso #001', icone: '🔎', xp: ev => 150 + Math.max(0, 50 - ev.erros * 10),
     recordes: [{ id: 'pontos', rotulo: 'Caso #001: maior pontuação', melhor: 'maior', valor: ev => ev.pontos, fmt: num }] });
   P.registrarJogo({ id: 'milhao', nome: 'Rumo ao Milhão', icone: '💰',
-    xp: ev => ev.tipo === 'foguete' ? 8 + (ev.mult >= 2 ? 10 : 0) : ev.tipo === 'bomba' ? 8 + 2 * (ev.niveis || 0) : ev.tipo === 'banco' ? 15 : ev.tipo === 'fim' ? 500 : 0,
+    xp: ev => ev.tipo === 'foguete' ? 8 + (ev.mult >= 2 ? 10 : 0) : ev.tipo === 'bomba' ? 8 + 2 * (ev.niveis || 0) : ev.tipo === 'banco' ? 15 : ev.tipo === 'roleta' ? 5 + (ev.mult >= 3 ? 5 : 0) : ev.tipo === 'fim' ? 500 : 0,
     recordes: [{ id: 'patrimonio', rotulo: 'Rumo ao Milhão: maior patrimônio', melhor: 'maior', valor: ev => ev.tipo === 'progresso' ? ev.maxPat : null, fmt: v => 'R$' + num(v) }] });
 
   /* ----- Conquistas ----- */
@@ -44,7 +44,20 @@
     { id: 'primeiros', icone: '🎲', nome: 'Primeiros Passos', desc: 'Jogue 10 partidas.', alvo: 10, prog: p => p.partidas },
     { id: 'veterano', icone: '🎮', nome: 'Veterano', desc: 'Jogue 50 partidas.', alvo: 50, prog: p => p.partidas },
     { id: 'explorador', icone: '🧭', nome: 'Explorador', desc: 'Experimente todos os jogos do site.', alvo: () => P.jogos.length, prog: p => Object.keys(p.jogos).length },
-    { id: 'dedicado', icone: '🔥', nome: 'Dedicado', desc: 'Conclua 3 desafios do dia.', alvo: 3, prog: p => p.desafiosConcluidos }
+    { id: 'dedicado', icone: '🔥', nome: 'Dedicado', desc: 'Conclua 3 desafios do dia.', alvo: 3, prog: p => p.desafiosConcluidos },
+
+    /* ----- Novas conquistas (xp = recompensa; as antigas continuam com os 50 XP padrão) ----- */
+    { id: 'mestremaquina', icone: '🏭', nome: 'Mestre da Máquina', desc: 'Evolua a Máquina de Prêmios até o nível 7, a Máquina Mítica.', xp: 250,
+      ok: ev => ev.jogo === 'premios' && ev.nivel >= 7 },
+    { id: 'mitico', icone: '🌌', nome: 'Toque do Mito', desc: 'Tire o prêmio mítico na Máquina de Prêmios. Só 1 chance em 2.000 giros.', xp: 400,
+      ok: ev => ev.jogo === 'premios' && ev.raridade === 5 },
+    { id: 'curador', icone: '🗂️', nome: 'Curador de Raridades', desc: 'Descubra 20 prêmios diferentes na Máquina de Prêmios.', xp: 150, alvo: 20,
+      prog: p => (p.recordes['premios:descobertos'] || {}).valor || 0 },
+    { id: 'roletapremiada', icone: '🎡', nome: 'Roleta Premiada', desc: 'Ganhe 10x ou mais em uma rodada da Roleta do Rumo ao Milhão.', xp: 120,
+      ok: ev => ev.jogo === 'milhao' && ev.tipo === 'roleta' && ev.mult >= 10 },
+    { id: 'experiente', icone: '⭐', nome: 'Jogador Experiente', desc: 'Alcance o nível 5 do perfil.', xp: 100, alvo: 5, prog: p => P.nivelDe(p.xp) },
+    { id: 'multitarefa', icone: '🎪', nome: 'Multitarefa', desc: 'Jogue pelo menos 3 partidas em 5 jogos diferentes.', xp: 100, alvo: 5,
+      prog: p => Object.values(p.jogos).filter(n => n >= 3).length }
   ].forEach(c => P.registrarConquista(c));
 
   /* ----- Desafios do dia (um por dia, em rotação) ----- */
