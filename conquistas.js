@@ -49,7 +49,7 @@
     /* ----- Novas conquistas (xp = recompensa; as antigas continuam com os 50 XP padrão) ----- */
     { id: 'mestremaquina', icone: '🏭', nome: 'Mestre da Máquina', desc: 'Evolua a Máquina de Prêmios até o nível 7, a Máquina Mítica.', xp: 250,
       ok: ev => ev.jogo === 'premios' && ev.nivel >= 7 },
-    { id: 'mitico', icone: '🌌', nome: 'Toque do Mito', desc: 'Tire o prêmio mítico na Máquina de Prêmios. Só 1 chance em 2.000 giros.', xp: 400,
+    { id: 'mitico', icone: '🌌', nome: 'Toque do Mito', desc: 'Tire o prêmio mítico na Máquina de Prêmios. Ele é extremamente raro.', xp: 400,
       ok: ev => ev.jogo === 'premios' && ev.raridade === 5 },
     { id: 'curador', icone: '🗂️', nome: 'Curador de Raridades', desc: 'Descubra 20 prêmios diferentes na Máquina de Prêmios.', xp: 150, alvo: 20,
       prog: p => (p.recordes['premios:descobertos'] || {}).valor || 0 },
