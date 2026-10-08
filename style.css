@@ -240,8 +240,8 @@ h1,h2{margin:0}
 .pz-maq.nv2 .pz-window{border-color:#4da3ff}
 .pz-maq.nv3 .pz-window{border-color:#a05cf0}.pz-maq.nv3{filter:drop-shadow(0 0 10px rgba(160,92,240,.45))}
 .pz-maq.nv4 .pz-window{border-color:#ff8a00}.pz-maq.nv4{filter:drop-shadow(0 0 12px rgba(255,138,0,.5))}
-.pz-maq.nv4 .pz-sym.reveal,.pz-maq.nv5 .pz-sym.reveal{animation:salto-premium .7s cubic-bezier(.3,1.6,.5,1)}
-.pz-maq.nv4~.pz-info .tag,.pz-maq.nv5~.pz-info .tag{box-shadow:0 0 0 3px var(--sun)}
+.pz-maq.nv4 .pz-sym.reveal,.pz-maq.nv5 .pz-sym.reveal,.pz-maq.nv6 .pz-sym.reveal,.pz-maq.nv7 .pz-sym.reveal{animation:salto-premium .7s cubic-bezier(.3,1.6,.5,1)}
+.pz-maq.nv4~.pz-info .tag,.pz-maq.nv5~.pz-info .tag,.pz-maq.nv6~.pz-info .tag,.pz-maq.nv7~.pz-info .tag{box-shadow:0 0 0 3px var(--sun)}
 .pz-maq.nv5 .pz-window{border-color:#f5a300;background:linear-gradient(135deg,#fff7d6,#ffe27a)}
 .pz-maq.nv5{animation:maq-lend 2.2s ease-in-out infinite}
 @keyframes salto-premium{0%{transform:scale(.2) rotate(-60deg)}60%{transform:scale(1.3) rotate(8deg)}100%{transform:none}}
@@ -268,3 +268,41 @@ h1,h2{margin:0}
 .rc-area{width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem;font-weight:600;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:14px;padding:.6rem;resize:vertical;word-break:break-all}
 .rc-aviso{background:#fff0b8;border:3px solid var(--ink);border-radius:12px;padding:.5rem .8rem;font-weight:700}
 .rc-msg{font-weight:800}.rc-msg.ok{color:#13794a}.rc-msg.erro{color:#c0182b}
+
+
+/* ===== Atualização: Máquina nível 6 e 7, Mítico e giros múltiplos ===== */
+.pz-maq.nv6 .pz-window{border-color:#ff4d6d;background:linear-gradient(135deg,#fff0f3,#ffc2cf)}
+.pz-maq.nv6{animation:maq-estelar 2.4s ease-in-out infinite}
+.pz-maq.nv7 .pz-window{border-color:#e63fc0;background:linear-gradient(135deg,#f3e9ff,#ffd6f5 50%,#d6e8ff)}
+.pz-maq.nv7{animation:maq-mitica 2.6s ease-in-out infinite}
+@keyframes maq-estelar{0%,100%{filter:drop-shadow(0 0 10px rgba(255,77,109,.45))}50%{filter:drop-shadow(0 0 22px rgba(255,77,109,.9))}}
+@keyframes maq-mitica{0%,100%{filter:drop-shadow(0 0 12px rgba(230,63,192,.55)) hue-rotate(0deg)}50%{filter:drop-shadow(0 0 26px rgba(123,47,247,.95)) hue-rotate(40deg)}}
+.pz-window.mit{animation:brilho-mit 1.2s ease-in-out infinite;box-shadow:inset 0 0 0 6px #e63fc0;background:linear-gradient(135deg,#f3e9ff,#ffd6f5 50%,#d6e8ff)}
+@keyframes brilho-mit{50%{box-shadow:inset 0 0 0 6px #7b2ff7,0 0 34px 10px #e63fc0}}
+.pz-lotesel{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin:.2rem 0 .4rem}
+.pz-lbtn{font:inherit;font-weight:900;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .9rem;min-height:44px;cursor:pointer}
+.pz-lbtn.on{background:var(--ink);color:var(--sun)}
+.pz-lbtn:disabled{opacity:.55;cursor:default}
+.pz-custo{max-width:30rem;margin:0 auto .4rem;font-size:.9rem;display:grid;gap:.1rem}
+.pz-custo small{font-weight:600;opacity:.75}
+.pz-lote{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin:.3rem 0}
+.pz-card{border:3px solid var(--c,var(--ink));border-radius:14px;background:#fff;padding:.4rem .5rem;min-width:96px;max-width:130px;line-height:1.2;animation:salto .4s cubic-bezier(.3,1.6,.5,1)}
+.pz-card .e{display:block;font-size:2rem}.pz-card small{display:block;font-weight:700;opacity:.75}.pz-card b{display:block;font-size:.85rem}
+.pz-card em{display:block;font-style:normal;font-weight:900;color:#13794a}
+.pz-resumo{margin-top:.4rem}.pz-resumo small{font-weight:600}
+
+/* ===== Atualização: Roleta do Rumo ao Milhão ===== */
+.mi-opcao.d{background:#e6d9ff}
+.mi-aviso{background:#fff0b8;border:3px solid var(--ink);border-radius:14px;padding:.6rem .9rem;margin:.6rem 0}
+.mi-roda-box{position:relative;width:240px;height:260px;margin:.4rem auto 0;padding-top:20px}
+.mi-ponteiro{position:absolute;top:-2px;left:50%;transform:translateX(-50%);font-size:2rem;line-height:1;color:var(--coral);z-index:2;text-shadow:0 2px 0 var(--ink)}
+.mi-roda{position:relative;width:240px;height:240px;border:4px solid var(--ink);border-radius:50%;box-shadow:0 5px 0 var(--ink)}
+.mi-rl{position:absolute;left:50%;top:50%;width:2.6em;margin:-.6em 0 0 -1.3em;text-align:center;font-weight:900;font-size:.9rem}
+.mi-hub{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;display:grid;place-items:center;font-style:normal;font-size:1.6rem;background:#fff;border:3px solid var(--ink);border-radius:50%}
+.mi-rtab{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:.5rem;margin:.4rem 0}
+.mi-rt{border:3px solid var(--ink);border-radius:12px;background:var(--c,#fff);padding:.4rem .2rem;line-height:1.2}
+.mi-rt span{display:block;font-size:1.5rem}.mi-rt b{display:block;font-size:1.1rem}.mi-rt small{display:block;font-weight:700;font-size:.78rem}
+.mi-hist{list-style:none;margin:.4rem auto;padding:0;max-width:24rem;display:grid;gap:.3rem}
+.mi-hist li{display:flex;justify-content:space-between;gap:1rem;border:3px solid var(--ink);border-radius:10px;background:#fff;padding:.25rem .7rem}
+.mi-hist .g{color:#13794a}.mi-hist .p{color:#c0213c}
+@media (max-width:480px){.mi-roda-box{transform:scale(.9);transform-origin:top center;margin-bottom:-1.5rem}}
