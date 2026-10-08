@@ -1,319 +1,360 @@
-/* Jogo 3: Máquina de Prêmios */
+/* Jogo 8: Rumo ao Milhão. Todo o dinheiro é virtual e existe só dentro do jogo.
+   Os números de equilíbrio (limites, multiplicadores, tempos) estão nas constantes do topo. */
 (function () {
-  // Chance (%) de cada raridade por giro. A soma deve dar 100.
-  const RAR = [
-    { nome: 'Comum',      chance: 54.95, cor: '#8d93a8', falas: ['Poderia ser pior.', 'Básico, mas honesto.', 'Bem, é alguma coisa.'] },
-    { nome: 'Incomum',    chance: 26,  cor: '#2fb67c', falas: ['Opa, até que não é ruim!', 'Bom achado.'] },
-    { nome: 'Raro',       chance: 12,  cor: '#3b8df0', falas: ['Agora sim! Isso brilha.', 'Pouca gente vê um desses.'] },
-    { nome: 'Muito raro', chance: 6.5, cor: '#a05cf0', falas: ['Uau! Isso é sorte de verdade.', 'Tire print, ninguém vai acreditar.'] },
-    { nome: 'Lendário',   chance: 0.5, cor: '#f5a300', falas: ['IMPOSSÍVEL. Isso é lendário!', 'A máquina tremeu. Você ouviu?'] },
-    // Mítico: 1 chance em 2.000 giros. Não recebe o bônus do Giro da Sorte nem dos eventos (só um empurrãozinho nos níveis 6 e 7 da máquina)
-    { nome: '🌌 Mítico',  chance: 0.05, cor: '#e63fc0', falas: ['O universo inteiro parou para ver isso.', 'Isso não deveria existir. Mas existe.', 'Quase ninguém na história viu este item.'] }
+  const KEY = 'wowgames.milhao.v1';
+  const INICIAL = 1000, META = 1000000, MIN_VALOR = 10;
+  const BANCO_MS = 5 * 60 * 1000, BANCO_MULT = 10;
+  const BANCO_LIMITE = 0.10;          // por depósito: até 10% do patrimônio (mínimo R$100), para o Banco não dominar o jogo
+  const FOGUETE_VEL = 0.1;            // multiplicador = e^(0.1 * segundos): 2x em ~7s, 10x em ~23s
+  const NIVEIS = [[5, 1], [6, 1], [8, 2], [8, 2], [9, 3], [10, 3], [10, 4], [12, 5]]; // [caixas, bombas] de cada nível da Bomba
+  const PASSO = NIVEIS.map(([n, b]) => Math.floor(97 * n / (n - b)) / 100);            // multiplicador de cada nível (probabilidade justa -3%)
+
+  /* Roleta: resultados e chances (soma = 100). Retorno médio = soma(multiplicador x chance) = 92,5%: a longo prazo a roleta consome o saldo,
+     então não é um atalho para o milhão. Em simulação (20 mil jogadores apostando sempre o máximo permitido) ninguém chegou a R$1.000.000 só com ela. */
+  const ROLETA = [
+    { id: 'zero',  icone: '💨', nome: 'Nada',             mult: 0,   chance: 36,   cor: '#ffd0d6' },
+    { id: 'meio',  icone: '🌧️', nome: 'Perdeu metade',    mult: 0.5, chance: 24,   cor: '#ffe3c2' },
+    { id: 'um',    icone: '🤝', nome: 'Valor devolvido',  mult: 1,   chance: 21,   cor: '#e8e8f2' },
+    { id: 'dois',  icone: '✨', nome: 'Dobrou',           mult: 2,   chance: 12.5, cor: '#c9f5df' },
+    { id: 'tres',  icone: '🔥', nome: 'Triplicou',        mult: 3,   chance: 5,    cor: '#b9e3ff' },
+    { id: 'dez',   icone: '💎', nome: 'Super prêmio',     mult: 10,  chance: 1.2,  cor: '#e3ccff' },
+    { id: 'vinte', icone: '🌟', nome: 'Prêmio raríssimo', mult: 25,  chance: 0.3,  cor: '#ffe27a' }
   ];
-  // [índice da raridade, emoji, nome]. 30 prêmios no total (os 20 originais primeiro, depois os 10 novos de cada raridade).
-  const PREMIOS = [
-    [0,'🍎','Maçã'],[0,'🥤','Refrigerante'],[0,'🧦','Meia solitária'],[0,'🪙','Moeda'],[0,'🥄','Colher'],[0,'🎈','Balão'],
-    [1,'🍕','Pizza'],[1,'🎮','Controle'],[1,'🎧','Fone'],[1,'🧸','Urso de pelúcia'],[1,'🪁','Pipa'],
-    [2,'💎','Diamante'],[2,'👑','Coroa'],[2,'🛸','Objeto misterioso'],[2,'🏆','Troféu'],
-    [3,'🦄','Unicórnio'],[3,'🌌','Galáxia'],[3,'🗿','Estátua misteriosa'],
-    [4,'🐉','Dragão de bolso'],[4,'☄️','Cometa engarrafado'],
-    // novos
-    [0,'🍌','Banana'],[0,'📎','Clipe perdido'],[0,'🥫','Lata de feijão'],
-    [1,'🎸','Guitarra'],
-    [2,'🔮','Bola de cristal'],[2,'🧭','Bússola encantada'],
-    [3,'🧞','Gênio da lâmpada'],[3,'🌋','Vulcão de mesa'],
-    [4,'🌈','Pote de ouro'],
-    [5,'🪐','Planeta de estimação']
-  ].map(([r, e, n]) => ({ r, e, n, id: e }));
+  const ROLETA_RETORNO = ROLETA.reduce((t, o) => t + o.mult * o.chance / 100, 0);
+  const ROLETA_LIMITE = 0.10, ROLETA_MIN_MAX = 100, ROLETA_TETO = 50000;   // por rodada: até 10% do patrimônio (mínimo R$100), nunca mais de R$50.000 e nunca mais que o saldo
+  // 14 casas da roda (só visual: as chances reais são as da tabela)
+  const RODA = ['zero', 'meio', 'um', 'dois', 'zero', 'meio', 'um', 'tres', 'zero', 'um', 'dois', 'meio', 'dez', 'vinte'];
+  const RODA_PASSO = 360 / RODA.length;
+  const rotuloMult = m => m === 0.5 ? '½x' : m + 'x';
+  const pctR = v => v.toString().replace('.', ',') + '%';
+  const sinal = n => (n >= 0 ? '+' : '-') + 'R$' + Math.floor(Math.abs(n)).toLocaleString('pt-BR');
 
-  // Probabilidade de cada prêmio = chance da raridade dividida pelo número de prêmios dela
-  const tamanho = RAR.map((_, i) => PREMIOS.filter(p => p.r === i).length);
-  PREMIOS.forEach(p => { p.peso = RAR[p.r].chance / tamanho[p.r]; });
-  // Giro da Sorte: o peso de raro, muito raro e lendário é multiplicado por SORTE e o sorteio
-  // continua aleatório (os pesos são renormalizados, não há prêmio garantido).
-  const SORTE = 3, GIROS_POR_SORTE = 10;
-  /* ----- Moedas, evolução da máquina e eventos: os números para ajustar ficam todos aqui ----- */
-  const MOEDAS_REPETIDO = [5, 15, 40, 100, 300, 1000]; // moedas por item repetido, por raridade (igual para todos da mesma raridade)
-  const BONUS_MOEDAS = [1, 1, 1, 1, 1, 1.10, 1.10];     // bônus de moedas por item repetido, por nível da máquina (níveis 6 e 7: +10%)
-  const CUSTOS_EVOLUCAO = [100, 300, 750, 1500, 6000, 15000]; // custo de cada evolução: 1→2, 2→3, 3→4, 4→5, 5→6 e 6→7 (simulado: nível 6 em ~410 giros e nível 7 em ~940)
-  const GIRO_EXTRA_MOEDAS = 20;                         // bônus do evento Giro Extra
-  const CHANCE_EVENTO = [0.08, 0.08, 0.10, 0.10, 0.12, 0.13, 0.15]; // chance de começar um evento depois de cada giro, por nível da máquina
-  // mult = multiplicador do peso de cada raridade [comum, incomum, raro, muito raro, lendário, mítico]; o sorteio é renormalizado
-  const MAQUINAS = [
-    { icone: '🟢', nome: 'Máquina Básica',     mult: [1, 1, 1, 1, 1, 1],                efeito: 'Sistema normal.' },
-    { icone: '🔵', nome: 'Máquina Aprimorada', mult: [1, 1.10, 1.10, 1.10, 1.10, 1],    efeito: 'Pequeno bônus em itens incomuns ou melhores.' },
-    { icone: '🟣', nome: 'Máquina Avançada',   mult: [1, 1.15, 1.20, 1.20, 1.20, 1],    efeito: 'Mais bônus de raridade e eventos um pouco mais frequentes.' },
-    { icone: '🟠', nome: 'Máquina Premium',    mult: [1, 1.15, 1.25, 1.35, 1.35, 1],    efeito: 'Bônus maior em raros ou melhores e recompensas com mais destaque.' },
-    { icone: '🟡', nome: 'Máquina Lendária',   mult: [1, 1.20, 1.30, 1.40, 1.50, 1],    efeito: 'Bônus final, eventos duram 1 giro a mais e animação especial.' },
-    { icone: '🔴', nome: 'Máquina Estelar',    mult: [1, 1.22, 1.33, 1.45, 1.55, 1.05], efeito: 'Bônus de sorte um pouco maior, eventos mais frequentes e +10% de moedas em itens repetidos.' },
-    { icone: '🌌', nome: 'Máquina Mítica',     mult: [1, 1.25, 1.36, 1.50, 1.60, 1.15], efeito: 'Bônus máximo, eventos ainda mais frequentes e duram 2 giros a mais, brilho cósmico e o Mítico um pouco menos improvável.' }
+  const brl = n => 'R$' + Math.floor(n).toLocaleString('pt-BR');
+  const xf = m => m.toFixed(2).replace('.', ',') + 'x';
+  const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+  const horas = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 3600) ? Math.floor(s / 3600) + 'h ' + Math.floor(s % 3600 / 60) + 'min' : Math.floor(s / 60) + 'min ' + (s % 60) + 's'; };
+  const mult = t => Math.exp(FOGUETE_VEL * t);
+  // Ponto em que o foguete para: chance de passar de m = 97% / m (mínimo 1,05x, máximo 500x)
+  const crashPoint = () => Math.min(500, Math.max(1.05, Math.floor(97 / (1 - Math.random())) / 100));
+  const sorteia = (n, b) => { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, b); };
+
+  const patrimonio = S => S.saldo + (S.foguete ? S.foguete.stake : 0) + (S.bomba ? S.bomba.stake : 0) + (S.banco ? S.banco.valor : 0);
+  const novoEstado = () => ({ saldo: INICIAL, maxPat: INICIAL, foguete: null, bomba: null, banco: null, metas: {}, venceu: null, roletaHist: [],
+    stats: { foguetes: 0, bombas: 0, bancos: 0, maxMult: 0, melhorNivel: 0, tempoMs: 0, roletas: 0, roletaMaxMult: 0, roletaSaldo: 0 } });
+
+  /* Metas: 'pat' = metas de patrimônio (aparecem uma de cada vez); as outras aparecem depois de você usar o modo */
+  const METAS = [
+    { id: 'p1', pat: true, icone: '🎯', nome: 'Primeiro passo', desc: 'Chegue a R$2.000', premio: 100, ok: S => patrimonio(S) >= 2000 },
+    { id: 'p2', pat: true, icone: '🎯', nome: 'Pequeno investidor', desc: 'Chegue a R$5.000', premio: 250, ok: S => patrimonio(S) >= 5000 },
+    { id: 'p3', pat: true, icone: '🎯', nome: 'Cinco dígitos', desc: 'Chegue a R$10.000', premio: 500, ok: S => patrimonio(S) >= 10000 },
+    { id: 'p4', pat: true, icone: '🎯', nome: 'Seis dígitos', desc: 'Chegue a R$100.000', premio: 5000, ok: S => patrimonio(S) >= 100000 },
+    { id: 'p5', pat: true, icone: '🎯', nome: 'Meio caminho', desc: 'Chegue a R$500.000', premio: 10000, ok: S => patrimonio(S) >= 500000 },
+    { id: 'p6', pat: true, icone: '🏆', nome: 'RUMO AO MILHÃO', desc: 'Chegue a R$1.000.000', premio: 0, ok: S => patrimonio(S) >= META },
+    { id: 'c1', icone: '🚀', nome: 'Piloto', desc: 'Colete o Foguete acima de 5,00x', premio: 200, ok: S => S.stats.maxMult > 5 && S.stats.foguetes > 0, mostrar: S => S.stats.foguetes > 0 },
+    { id: 'c2', icone: '💣', nome: 'Sobrevivente', desc: 'Passe por 4 níveis da Bomba em um só desafio', premio: 200, ok: S => S.stats.melhorNivel >= 4, mostrar: S => S.stats.bombas > 0 },
+    { id: 'c3', icone: '🏦', nome: 'Paciência recompensada', desc: 'Conclua um investimento no Banco', premio: 100, ok: S => S.stats.bancos >= 1, mostrar: S => S.stats.bancos > 0 || !!S.banco }
   ];
-  const EVENTOS = {
-    raro:  { icone: '⚡', nome: 'HORA DO RARO',  duracao: 3, mult: [1, 1, 1.6, 1.6, 1.6, 1], texto: e => `Próximos ${e.total} giros com bônus de raridade.` },
-    dupla: { icone: '💎', nome: 'CHANCE DUPLA',  duracao: 5, mult: [1, 1, 1, 1.5, 1.5, 1],   texto: () => 'Você recebeu um bônus temporário de sorte.' },
-    extra: { icone: '🎁', nome: 'GIRO EXTRA',    duracao: 1, mult: null,                  texto: () => `O próximo giro dá uma recompensa extra: 🪙 +${GIRO_EXTRA_MOEDAS} moedas.` },
-    sorte: { icone: '🍀', nome: 'SORTE GRANDE',  duracao: 3, mult: [1, 1.3, 1.3, 1.3, 1.3, 1], texto: () => 'A sorte da máquina aumentou um pouco.' }
-  };
 
-  // bonus (opcional) = multiplicadores por raridade vindos da máquina e dos eventos. Sem bônus, funciona como antes.
-  const pesoDe = (p, mult, bonus) => p.peso * (p.r >= 2 && p.r <= 4 ? mult : 1) * (bonus ? bonus[p.r] : 1);
-
-  function sortear(mult = 1, bonus = null) {
-    const total = PREMIOS.reduce((s, p) => s + pesoDe(p, mult, bonus), 0);
-    let x = Math.random() * total;
-    for (const p of PREMIOS) { if ((x -= pesoDe(p, mult, bonus)) < 0) return p; }
-    return PREMIOS[PREMIOS.length - 1];
-  }
-  const noSorte = i => i >= 2 && i <= 4;                    // o Giro da Sorte multiplica raro, muito raro e lendário (nunca o Mítico)
-  const totSorte = RAR.reduce((s, r, i) => s + r.chance * (noSorte(i) ? SORTE : 1), 0);
-  const pct = v => (v < 1 ? v.toFixed(2) : v.toFixed(1)).replace('.', ',') + '%';
-  const chancesSorte = RAR.map((r, i) => r.nome + ' ' + pct(r.chance * (noSorte(i) ? SORTE : 1) / totSorte * 100)).join(', ');
-
-  const KEY = 'wowgames.premios.v1', KEY_ANTIGA = 'recreio.premios.v1';
-  const vazio = () => ({ giros: 0, normais: 0, sorte: 0, achados: {}, moedas: 0, nivel: 1, evento: null });
-  function carregar() {
-    let est;
-    try { est = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem(KEY_ANTIGA)); } catch (e) { est = null; }
-    if (!est) return vazio();
-    est.achados = est.achados || {};
-    est.giros = est.giros || 0;
-    if (est.normais === undefined) { est.normais = est.giros; est.sorte = Math.floor(est.giros / GIROS_POR_SORTE); } // saves antigos
-    est.sorte = est.sorte || 0;
-    est.moedas = est.moedas || 0;                                                       // saves antigos não têm moedas nem nível
-    est.nivel = Math.min(MAQUINAS.length, Math.max(1, est.nivel || 1));
-    if (!(est.evento && EVENTOS[est.evento.id] && est.evento.restantes > 0)) est.evento = null;
-    return est;
-  }
+  const ler = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
+  const carregar = () => { const b = novoEstado(), s = ler(), r = Object.assign(b, s, { stats: Object.assign(b.stats, s.stats || {}), metas: s.metas || {} }); r.roletaHist = Array.isArray(r.roletaHist) ? r.roletaHist.slice(-10) : []; return r; };
 
   WowGames.register({
-    id: 'premios', nome: 'Máquina de Prêmios', icone: '🎁', cor: 'var(--mint)',
-    desc: 'Gire a máquina e colecione todos os 30 prêmios. Existe um item mítico, quase impossível de achar.',
+    id: 'milhao', nome: 'Rumo ao Milhão', icone: '💰', cor: '#8ee0b0',
+    desc: 'Comece com R$1.000 e tente chegar ao seu primeiro milhão.',
 
     mount(el) {
-      let est = carregar(), girando = false, iv, to, avTo, msgEvol = '', lote = 1, pendente = null;
-      const salvar = () => { try { localStorage.setItem(KEY, JSON.stringify(est)); } catch (e) {} };
+      let S = carregar(), aba = 'inicio', raf = 0, iv = 0, ult = Date.now();
+      let resRl = null, rolando = null, toR = 0, rodaRot = 0, ultimaAposta = 50;
+      let resFg = null, resBm = null, resBk = null, avisos = [], festa = false, bkPronto = !!S.banco && Date.now() >= S.banco.fim;
+      const guardar = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+      const $ = s => el.querySelector(s);
 
-      el.innerHTML = `
-        <div class="pz-hud"><span>🪙 Moedas: <b id="pz-moedas">0</b></span><span id="pz-nivelhud"></span></div>
-        <div class="pz-evento" id="pz-evento"></div>
-        <div class="pz-aviso" id="pz-aviso"></div>
-        <div class="pz-maq nv1" id="pz-maq">
-          <div class="pz-window" id="pz-win"><span class="pz-sym" id="pz-sym">❓</span></div>
-          <div class="pz-nome" id="pz-nome"></div>
-        </div>
-        <div class="pz-info" id="pz-info">Aperte o botão e descubra o que sai.</div>
-        <div class="pz-sorte" id="pz-sorte"></div>
-        <div class="pz-lotesel" id="pz-lotesel" role="group" aria-label="Quantidade de giros"></div>
-        <div class="pz-custo" id="pz-custo"></div>
-        <div class="pz-btns">
-          <button class="btn big" id="pz-go">GIRAR</button>
-          <button class="btn big lucky" id="pz-lucky">⭐ USAR GIRO DA SORTE 3x</button>
-        </div>
-        <div class="pz-stats" id="pz-stats"></div>
-        <div class="pz-evol" id="pz-evol"></div>
-        <h2 id="pz-tit"></h2>
-        <div class="pz-col" id="pz-col"></div>
-        <p class="pz-chances">Chances por giro: ${RAR.map(r => r.nome + ' ' + pct(r.chance)).join(', ')}.<br>Com Giro da Sorte (${SORTE}x em raro, muito raro e lendário; o Mítico não é afetado): ${chancesSorte}.</p>
-        <p class="pz-chances" id="pz-atuais"></p>
-        <button class="link" id="pz-reset">Zerar coleção</button>`;
-      const $ = id => el.querySelector('#' + id);
-      const win = $('pz-win'), sym = $('pz-sym'), info = $('pz-info'), btn = $('pz-go'), luckyBtn = $('pz-lucky');
-
-      /* ----- Máquina, moedas e eventos ----- */
-      const bonusAtual = () => RAR.map((_, r) => MAQUINAS[est.nivel - 1].mult[r] * (est.evento && EVENTOS[est.evento.id].mult ? EVENTOS[est.evento.id].mult[r] : 1));
-      function chancesAtuais() {
-        const b = bonusAtual(), por = RAR.map((_, r) => PREMIOS.filter(p => p.r === r).reduce((s, p) => s + pesoDe(p, 1, b), 0));
-        const t = por.reduce((a, c) => a + c, 0);
-        return RAR.map((r, i) => r.nome + ' ' + pct(por[i] / t * 100)).join(', ');
-      }
-      function htmlEvento() {
-        const e = est.evento; if (!e) return '';
-        const d = EVENTOS[e.id];
-        return `<div class="pz-ev ${e.id}"><b>${d.icone} ${d.nome}!</b><span>${d.texto(e)}</span><em>Giros restantes: ${e.restantes}</em></div>`;
-      }
-      function htmlEvol() {
-        const m = MAQUINAS[est.nivel - 1], msg = msgEvol ? `<p class="pz-evmsg">${msgEvol}</p>` : '';
-        if (est.nivel >= MAQUINAS.length) return `<h3>🏭 NÍVEL DA MÁQUINA</h3><div class="pz-niveis"><div><small>NÍVEL ATUAL</small><b>${m.icone} ${m.nome}</b><small>${m.efeito}</small></div></div><div class="pz-max">🏆 NÍVEL MÁXIMO<br>Você alcançou a ${m.nome}!</div>${msg}`;
-        const prox = MAQUINAS[est.nivel], custo = CUSTOS_EVOLUCAO[est.nivel - 1], pct = Math.min(100, est.moedas / custo * 100), f = n => n.toLocaleString('pt-BR');
-        return `<h3>🏭 NÍVEL DA MÁQUINA</h3>
-          <div class="pz-niveis"><div><small>NÍVEL ATUAL</small><b>${m.icone} ${m.nome}</b><small>${m.efeito}</small></div>
-            <div><small>PRÓXIMO NÍVEL</small><b>${prox.icone} ${prox.nome}</b><small>CUSTO: 🪙 ${f(custo)}</small><small>${prox.efeito}</small></div></div>
-          <p>Progresso: <b>${f(est.moedas)} / ${f(custo)} moedas</b></p><div class="pz-barra"><i style="width:${pct}%"></i></div>
-          <p>🪙 Suas moedas: <b>${f(est.moedas)}</b></p>
-          <button class="btn" id="pz-evoluir">⬆️ EVOLUIR MÁQUINA</button>${msg}`;
-      }
-      function evoluir() {
-        if (girando || est.nivel >= MAQUINAS.length) return;
-        const custo = CUSTOS_EVOLUCAO[est.nivel - 1];
-        if (est.moedas < custo) { msgEvol = `Você precisa de mais ${custo - est.moedas} moedas.`; return desenhar(); }
-        if (!confirm('Você tem certeza que deseja evoluir a máquina?')) return;
-        est.moedas -= custo; est.nivel++; salvar();
-        const m = MAQUINAS[est.nivel - 1];
-        msgEvol = `🎉 MÁQUINA EVOLUÍDA!<br>Agora você tem a ${m.icone} ${m.nome}.`;
-        WowGames.evento({ jogo: 'premios', tipo: 'evolucao', nivel: est.nivel });
-        desenhar();
-        WowGames.confetti(el, [m.icone, '✨', '⬆️']);
-      }
-      // Depois de cada giro: desconta o giro do evento ativo ou, se não há evento, sorteia se começa um novo (nunca dois ao mesmo tempo)
-      function passoEvento() {
-        let terminou = null, iniciou = null;
-        if (est.evento) {
-          est.evento.restantes--;
-          if (est.evento.restantes <= 0) { terminou = est.evento; est.evento = null; }
-        } else if (Math.random() < CHANCE_EVENTO[est.nivel - 1]) {
-          const ids = Object.keys(EVENTOS), id = ids[Math.floor(Math.random() * ids.length)];
-          const dur = EVENTOS[id].duracao + (EVENTOS[id].duracao > 1 ? (est.nivel >= 7 ? 2 : est.nivel >= 5 ? 1 : 0) : 0); // nível 5: eventos duram 1 giro a mais; nível 7: 2 a mais
-          est.evento = { id, restantes: dur, total: dur }; iniciou = est.evento;
+      /* Atualiza metas (com recompensa), maior patrimônio e vitória. Chamar depois de qualquer mudança de saldo. */
+      function checar() {
+        let mudou = true;
+        while (mudou) {
+          mudou = false;
+          for (const m of METAS) if (!S.metas[m.id] && m.ok(S)) { S.metas[m.id] = true; S.saldo += m.premio; mudou = true; avisos.push(`🎯 Meta concluída: ${m.nome}${m.premio ? ' (+' + brl(m.premio) + ')' : ''}`); }
         }
-        return { terminou, iniciou };
-      }
-      function avisar(html) {
-        const a = $('pz-aviso'); a.innerHTML = html; a.className = 'pz-aviso show';
-        clearTimeout(avTo); avTo = setTimeout(() => { a.className = 'pz-aviso'; }, 4500);
-      }
-
-      function desenhar() {
-        $('pz-moedas').textContent = est.moedas.toLocaleString('pt-BR');
-        const mq = MAQUINAS[est.nivel - 1];
-        $('pz-nivelhud').textContent = `${mq.icone} Nível ${est.nivel}`;
-        $('pz-nome').textContent = `${mq.icone} ${mq.nome}`;
-        $('pz-maq').className = 'pz-maq nv' + est.nivel;
-        $('pz-evento').innerHTML = htmlEvento();
-        $('pz-evol').innerHTML = htmlEvol();
-        $('pz-atuais').textContent = est.nivel > 1 || est.evento ? `Chances atuais (giro normal, com a máquina e o evento ativo): ${chancesAtuais()}.` : '';
-        $('pz-sorte').innerHTML = `Giros da sorte: ⭐ <b>${est.sorte}</b><small>Próximo em ${GIROS_POR_SORTE - (est.normais % GIROS_POR_SORTE)} giros normais</small>`;
-        $('pz-lotesel').innerHTML = [1, 2, 3].map(n => `<button class="pz-lbtn ${n === lote ? 'on' : ''}" data-n="${n}" ${girando ? 'disabled' : ''}>${n} ${n > 1 ? 'GIROS' : 'GIRO'}</button>`).join('');
-        const faltam = Math.max(0, lote - est.sorte), gl = lote > 1 ? lote + ' giros' : '1 giro';
-        $('pz-custo').innerHTML = `<div>🎰 <b>Giro normal:</b> custo total ${gl} <small>(grátis: nenhuma moeda é gasta)</small></div>` +
-          `<div>⭐ <b>Giro da Sorte:</b> custo total ${lote} de ${est.sorte} ${est.sorte === 1 ? 'disponível' : 'disponíveis'}${faltam ? ` <small>(faltam ${faltam})</small>` : ''}</div>`;
-        btn.textContent = lote > 1 ? `GIRAR ${lote}x` : 'GIRAR';
-        luckyBtn.textContent = `⭐ USAR ${lote > 1 ? lote + ' GIROS' : 'GIRO'} DA SORTE 3x`;
-        btn.disabled = girando;
-        luckyBtn.disabled = girando || est.sorte < lote;
-        const n = Object.keys(est.achados).length;
-        const top = PREMIOS.filter(p => est.achados[p.id]).sort((a, b) => b.r - a.r)[0];
-        $('pz-stats').innerHTML =
-          `<div><b>${est.giros}</b>giros</div><div><b>${n}/${PREMIOS.length}</b>descobertos</div>` +
-          `<div><b>${top ? top.e + ' ' + top.n : '—'}</b>mais raro</div>`;
-        $('pz-tit').textContent = `Prêmios descobertos: ${n}/${PREMIOS.length}`;
-        $('pz-col').innerHTML = PREMIOS.map(p => est.achados[p.id]
-          ? `<div class="pz-cell" style="--c:${RAR[p.r].cor}"><span class="e">${p.e}</span>${p.n}<small>${RAR[p.r].nome} ×${est.achados[p.id]}</small></div>`
-          : `<div class="pz-cell off"><span class="e">❔</span>???</div>`).join('');
-      }
-
-      /* Resolve UM giro por completo (sorteio, coleção, contadores, moedas e eventos). Os giros múltiplos chamam esta função uma vez por giro. */
-      function resolver(sorte) {
-        const eventoAtivo = est.evento ? est.evento.id : null;
-        const p = sortear(sorte ? SORTE : 1, bonusAtual());          // exatamente um prêmio por giro
-        const novo = !est.achados[p.id];
-        est.giros++;
-        let ganhouSorte = false;
-        if (!sorte) { est.normais++; if (est.normais % GIROS_POR_SORTE === 0) { est.sorte++; ganhouSorte = true; } }
-        est.achados[p.id] = (est.achados[p.id] || 0) + 1;     // a duplicata continua contando na coleção
-        const moedasRepetido = novo ? 0 : Math.round(MOEDAS_REPETIDO[p.r] * BONUS_MOEDAS[est.nivel - 1]);   // só repetidos dão moedas
-        const moedasExtra = eventoAtivo === 'extra' ? GIRO_EXTRA_MOEDAS : 0;
-        est.moedas += moedasRepetido + moedasExtra;
-        const ev = passoEvento();
-        return { p, novo, sorte: !!sorte, ganhouSorte, moedasRepetido, moedasExtra, ev, descobertos: Object.keys(est.achados).length, nivel: est.nivel };
-      }
-
-      /* Avisa o perfil (XP, conquistas, desafio do dia) de cada giro, uma vez só por lote */
-      function enviarEventos(pend) {
-        if (!pend || pend.enviado) return;
-        pend.enviado = true;
-        for (const r of pend.res) WowGames.evento({ jogo: 'premios', tipo: 'giro', partida: true, raridade: r.p.r, novo: r.novo, sorte: r.sorte, descobertos: r.descobertos, nivel: r.nivel, lote: pend.res.length });
-      }
-
-      function girar(sorte) {
-        const n = Math.min(3, Math.max(1, lote));
-        if (girando || (sorte && est.sorte < n)) return;        // nunca gasta mais giros da sorte do que possui
-        girando = true; btn.disabled = true; luckyBtn.disabled = true; msgEvol = '';
-        if (sorte) est.sorte -= n;                               // o Giro da Sorte é consumido ao usar
-        const res = [];
-        for (let i = 0; i < n; i++) res.push(resolver(sorte));   // cada giro é sorteado e contabilizado individualmente
-        salvar();                                                // tudo já fica salvo antes da animação
-        pendente = { res, enviado: false };
-        $('pz-lotesel').querySelectorAll('button').forEach(b => { b.disabled = true; });
-        win.className = 'pz-window gira';
-        info.textContent = n > 1 ? `Girando ${n} vezes...` : 'Girando...';
-        iv = setInterval(() => { sym.textContent = PREMIOS[Math.floor(Math.random() * PREMIOS.length)].e; }, 80);
-        to = setTimeout(() => revelar(), n > 1 ? 1200 : 1800);
-      }
-
-      const classeJanela = p => 'pz-window' + (p.r >= 2 ? ' fx' : '') + (p.r === 4 ? ' leg' : '') + (p.r === 5 ? ' mit' : '');
-      function mostrarSimbolo(p) {
-        win.className = classeJanela(p);
-        sym.textContent = p.e;
-        sym.classList.remove('reveal'); void sym.offsetWidth; sym.classList.add('reveal');
-        if (p.r >= 2) WowGames.confetti(el, [p.e, '✨', '🎉']);
-        if (p.r === 5) WowGames.confetti(el, ['🌌', '🪐', '✨', '💫']);
-      }
-      function avisosDe(res) {
-        const msgs = [];
-        for (const r of res) {
-          if (r.ev.terminou) msgs.push(`${EVENTOS[r.ev.terminou.id].icone} ${EVENTOS[r.ev.terminou.id].nome} terminou.`);
-          if (r.ev.iniciou) { const d = EVENTOS[r.ev.iniciou.id], k = r.ev.iniciou.restantes; msgs.push(`${d.icone} ${d.nome} ATIVA!<br>[${k} ${k > 1 ? 'giros restantes' : 'giro restante'}]`); }
+        S.maxPat = Math.max(S.maxPat, patrimonio(S));
+        WowGames.evento({ jogo: 'milhao', tipo: 'progresso', patrimonio: patrimonio(S), maxPat: S.maxPat });
+        if (!S.venceu && patrimonio(S) >= META) {
+          S.venceu = { pat: patrimonio(S), tempoMs: S.stats.tempoMs, maxMult: S.stats.maxMult, desafios: S.stats.foguetes + S.stats.bombas, bancos: S.stats.bancos };
+          festa = true;
+          WowGames.evento({ jogo: 'milhao', tipo: 'fim', partida: true, patrimonio: patrimonio(S) });
         }
-        return msgs;
-      }
-      function fimDoLote(res) {
-        enviarEventos(pendente); pendente = null;
-        girando = false;
-        desenhar();
-        const msgs = avisosDe(res);
-        if (msgs.length) {
-          avisar(msgs.join('<br>'));
-          if (res.some(r => r.ev.iniciou)) { const b = $('pz-evento').firstElementChild; if (b) b.classList.add('pop'); }
-        }
+        guardar();
       }
 
-      function revelar() {
-        clearInterval(iv);
-        const res = pendente.res, n = res.length;
-        if (n === 1) {                                           // 1 giro: exatamente como antes
-          const x = res[0], p = x.p, r = RAR[p.r];
-          mostrarSimbolo(p);
-          info.innerHTML = (x.sorte ? '<small>⭐ Giro da Sorte 3x</small><br>' : '') + (x.novo ? '<div class="novo">NOVO PRÊMIO DESCOBERTO!</div>' : '') +
-            `<span class="tag" style="background:${r.cor}">${r.nome}</span> <b>${p.n}</b><br>` +
-            r.falas[Math.floor(Math.random() * r.falas.length)] +
-            (x.ganhouSorte ? '<div class="novo">⭐ Você ganhou um Giro da Sorte!</div>' : '') +
-            (x.novo ? '' : `<div class="rep">🔁 ITEM REPETIDO!</div><div class="moedas">🪙 +${x.moedasRepetido} moedas</div>`) +
-            (x.moedasExtra ? `<div class="moedas">🎁 Giro Extra: 🪙 +${x.moedasExtra} moedas</div>` : '');
-          return fimDoLote(res);
-        }
-        // 2 ou 3 giros: um cardzinho por giro, em sequência, e um resumo no final
-        info.innerHTML = '<div class="pz-lote" id="pz-lote"></div><div class="pz-resumo" id="pz-resumo"></div>';
-        let i = 0;
-        const passo = () => {
-          const x = res[i], p = x.p, r = RAR[p.r];
-          mostrarSimbolo(p);
-          const card = document.createElement('div');
-          card.className = 'pz-card'; card.style.setProperty('--c', r.cor);
-          card.innerHTML = `<small>GIRO ${i + 1}</small><span class="e">${p.e}</span><b>${p.n}</b><small>${r.nome}</small>` +
-            (x.novo ? '<em>NOVO!</em>' : `<small>🪙 +${x.moedasRepetido + x.moedasExtra}</small>`);
-          $('pz-lote').appendChild(card);
-          i++;
-          if (i < n) { to = setTimeout(passo, 450); return; }
-          const moedas = res.reduce((t, y) => t + y.moedasRepetido + y.moedasExtra, 0), novos = res.filter(y => y.novo).length, sortes = res.filter(y => y.ganhouSorte).length;
-          $('pz-resumo').innerHTML = `<b>${n} giros realizados</b><br>🪙 +${moedas} moedas${novos ? ` | ✨ ${novos} ${novos > 1 ? 'novos prêmios' : 'novo prêmio'}` : ''}${sortes ? ` | ⭐ +${sortes} Giro da Sorte` : ''}<br>` +
-            `<small>Itens obtidos: ${res.map(y => y.p.e + ' ' + y.p.n).join(', ')}</small>` + (res.some(y => y.moedasExtra) ? '<br><small>🎁 Giro Extra incluído</small>' : '');
-          fimDoLote(res);
-        };
-        passo();
+      /* ---------- Partes comuns ---------- */
+      function topo() {
+        const p = patrimonio(S), pct = Math.min(100, p / META * 100);
+        const partes = [`Disponível ${brl(S.saldo)}`];
+        if (S.banco) partes.push(`No banco ${brl(S.banco.valor)}`);
+        const emJogo = (S.foguete ? S.foguete.stake : 0) + (S.bomba ? S.bomba.stake : 0);
+        if (emJogo) partes.push(`Em desafio ${brl(emJogo)}`);
+        return `<div class="mi-top">
+            <div><small>💰 Patrimônio</small><b>${brl(p)}</b></div><div><small>🎯 Meta</small><b>${brl(META)}</b></div>
+            <div><small>📊 Progresso</small><b>${pct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</b></div></div>
+          <div class="mi-barra"><i style="width:${Math.max(pct, 0.6)}%"></i></div><p class="mi-sub">${partes.join(' | ')}</p>`;
+      }
+      function form(max, acao, rotulo) {
+        return `<div class="mi-form"><p><b>Quanto você quer colocar no desafio?</b><br><small>Disponível: ${brl(S.saldo)}${max < S.saldo ? ' | Máximo desta vez: ' + brl(max) : ''}</small></p>
+          <input id="mi-v" class="jg-in mi-in" type="number" inputmode="numeric" min="${MIN_VALOR}" max="${max}" step="1" data-max="${max}" placeholder="R$">
+          <div class="mi-chips">${[10, 25, 50, 100].map(p => `<button class="mi-chip" data-a="pct" data-v="${p}">${p === 100 ? 'Máximo' : p + '%'}</button>`).join('')}</div>
+          <p class="jg-msg" id="mi-err"></p><button class="btn big" data-a="${acao}">${rotulo}</button></div>`;
+      }
+      function lerValor() {
+        const i = $('#mi-v'), v = Math.floor(Number(i.value)), max = Number(i.dataset.max), err = $('#mi-err');
+        if (!i.value || !isFinite(v) || v < MIN_VALOR) { err.textContent = `Digite um valor de pelo menos ${brl(MIN_VALOR)}.`; return null; }
+        if (v > max) { err.textContent = `Valor acima do permitido. O máximo agora é ${brl(max)}.`; return null; }
+        return v;
+      }
+      const caixaRes = r => r ? `<div class="mi-res ${r.ok ? 'ok' : 'perdeu'} ca-pop">${r.txt}</div>` : '';
+
+      /* ---------- Foguete ---------- */
+      function vFoguete() {
+        const f = S.foguete;
+        const cena = `<div class="mi-cena ${f ? 'voando' : ''}"><span class="mi-foguete" id="fg-r" style="left:8%;bottom:8%">🚀</span></div>`;
+        if (!f) return `<h3>🚀 Desafio do Foguete</h3><p>O multiplicador sobe a cada instante, mas o foguete pode parar a qualquer momento. Colete antes disso. Se ele parar, o valor do desafio é perdido.</p>${cena}${caixaRes(resFg)}${form(S.saldo, 'lancar', '🚀 Lançar foguete')}`;
+        return `<h3>🚀 Foguete no ar!</h3>${cena}
+          <div class="mi-voo"><div><small>Multiplicador</small><b id="fg-m">1,00x</b></div><div><small>Valor no desafio</small><b>${brl(f.stake)}</b></div><div><small>Valor atual</small><b id="fg-v">${brl(f.stake)}</b></div></div>
+          <button class="btn big mi-coletar" data-a="coletarF">COLETAR</button>`;
+      }
+      function desenhaFoguete(m) {
+        const f = S.foguete, mm = Math.floor(m * 100) / 100;
+        if (!$('#fg-m')) return;
+        $('#fg-m').textContent = xf(mm); $('#fg-v').textContent = brl(f.stake * mm);
+        const p = Math.min(1, Math.log(m) / Math.log(20)), r = $('#fg-r');
+        r.style.left = (8 + 70 * p) + '%'; r.style.bottom = (8 + 58 * p) + '%';
+      }
+      function voo() {
+        cancelAnimationFrame(raf);
+        const f = S.foguete; if (!f) return;
+        const m = mult((Date.now() - f.inicio) / 1000);
+        if (m >= f.crash) return perdeFoguete(false);
+        desenhaFoguete(m); raf = requestAnimationFrame(voo);
+      }
+      function perdeFoguete(fora) {
+        const f = S.foguete; S.foguete = null;
+        WowGames.evento({ jogo: 'milhao', tipo: 'foguete', partida: true, mult: 0, perdeu: true });
+        resFg = { ok: false, txt: `💥 O foguete parou em <b>${xf(f.crash)}</b>${fora ? ' enquanto você estava fora' : ''}. Você perdeu ${brl(f.stake)} de dinheiro virtual.` };
+        checar(); render();
+      }
+      function coletarFoguete() {
+        const f = S.foguete; if (!f) return;
+        const m = Math.floor(mult((Date.now() - f.inicio) / 1000) * 100) / 100;
+        if (m >= f.crash) return perdeFoguete(false);
+        cancelAnimationFrame(raf);
+        const ganho = Math.floor(f.stake * m); S.saldo += ganho; S.foguete = null;
+        S.stats.maxMult = Math.max(S.stats.maxMult, m);
+        WowGames.evento({ jogo: 'milhao', tipo: 'foguete', partida: true, mult: m, ganho });
+        resFg = { ok: true, txt: `✅ Você coletou em <b>${xf(m)}</b> e recebeu <b>${brl(ganho)}</b> (${ganho >= f.stake ? 'lucro' : 'resultado'} de ${brl(ganho - f.stake)}).` };
+        checar(); render();
       }
 
-      btn.onclick = () => girar(false);
-      luckyBtn.onclick = () => girar(true);
-      $('pz-lotesel').onclick = e => { const b = e.target.closest('[data-n]'); if (!b || girando) return; lote = Math.min(3, Math.max(1, Number(b.dataset.n) || 1)); desenhar(); };
-      $('pz-evol').onclick = e => { if (e.target.closest('#pz-evoluir')) evoluir(); };
-      $('pz-reset').onclick = () => {
-        if (girando) return;
-        if (!confirm('Apagar a coleção e as estatísticas? Suas moedas e o nível da máquina continuam.')) return;
-        est = Object.assign(vazio(), { moedas: est.moedas, nivel: est.nivel, evento: est.evento }); salvar(); sym.textContent = '❓'; win.className = 'pz-window';
-        info.textContent = 'Coleção zerada. Bora de novo.'; desenhar();
+      /* ---------- Bomba ---------- */
+      function vBomba() {
+        const b = S.bomba;
+        if (!b) {
+          const rev = resBm && resBm.rev ? tabuleiro(resBm.rev) : '';
+          return `<h3>💣 Desafio da Bomba</h3><p>Escolha uma caixa por nível. Se for segura, o multiplicador sobe e você decide: continuar ou encerrar e coletar. Se achar a bomba, o valor do desafio é perdido. A cada nível, há mais caixas e mais bombas.</p>${caixaRes(resBm)}${rev}${form(S.saldo, 'iniciarB', '💣 Começar desafio')}`;
+        }
+        const [n, bo] = NIVEIS[b.nivel], valor = Math.floor(b.stake * b.mult);
+        return `<h3>💣 Nível ${b.nivel + 1} de ${NIVEIS.length}</h3><p>${n} caixas, ${bo} ${bo > 1 ? 'bombas' : 'bomba'}. Acertando este nível: ×${PASSO[b.nivel].toFixed(2).replace('.', ',')}</p>
+          <div class="mi-voo"><div><small>Multiplicador</small><b>${xf(b.mult)}</b></div><div><small>Valor no desafio</small><b>${brl(b.stake)}</b></div><div><small>Valor atual</small><b>${brl(valor)}</b></div></div>
+          <div class="mi-tab">${[...Array(n).keys()].map(i => `<button class="mi-cx" data-a="cx" data-v="${i}" aria-label="Caixa ${i + 1}">?</button>`).join('')}</div>
+          <button class="btn big mi-coletar" data-a="coletarB" ${b.nivel > 0 ? '' : 'disabled'}>${b.nivel > 0 ? 'Encerrar e coletar ' + brl(valor) : 'Escolha uma caixa para começar'}</button>`;
+      }
+      const tabuleiro = r => `<div class="mi-tab rev">${[...Array(r.n).keys()].map(i => `<span class="mi-cx ${r.bombas.includes(i) ? 'bomba' : 'seguro'} ${i === r.esc ? 'esc' : ''}">${r.bombas.includes(i) ? '💣' : '⭐'}</span>`).join('')}</div>`;
+      function iniciarBomba(v) {
+        S.saldo -= v; S.stats.bombas++;
+        S.bomba = { stake: v, nivel: 0, mult: 1, bombas: sorteia(NIVEIS[0][0], NIVEIS[0][1]) }; resBm = null;
+      }
+      function escolhaBomba(i) {
+        const b = S.bomba; if (!b) return;
+        const [n] = NIVEIS[b.nivel];
+        if (b.bombas.includes(i)) {
+          resBm = { ok: false, rev: { n, bombas: b.bombas, esc: i }, txt: `💥 Era a bomba! Você perdeu ${brl(b.stake)} de dinheiro virtual no nível ${b.nivel + 1}. Veja onde ela estava:` };
+          WowGames.evento({ jogo: 'milhao', tipo: 'bomba', partida: true, perdeu: true, niveis: b.nivel });
+          S.bomba = null; return checar(), render();
+        }
+        b.mult = Math.round(b.mult * PASSO[b.nivel] * 100) / 100; b.nivel++;
+        S.stats.melhorNivel = Math.max(S.stats.melhorNivel, b.nivel);
+        if (b.nivel >= NIVEIS.length) return coletarBomba(true);
+        b.bombas = sorteia(NIVEIS[b.nivel][0], NIVEIS[b.nivel][1]);
+        checar(); render();
+      }
+      function coletarBomba(completo) {
+        const b = S.bomba; if (!b) return;
+        const ganho = Math.floor(b.stake * b.mult); S.saldo += ganho; S.bomba = null;
+        S.stats.maxMult = Math.max(S.stats.maxMult, b.mult);
+        WowGames.evento({ jogo: 'milhao', tipo: 'bomba', partida: true, mult: b.mult, niveis: b.nivel });
+        resBm = { ok: true, txt: `${completo ? '🏁 Você passou por todos os níveis! ' : '✅ '}Multiplicador final <b>${xf(b.mult)}</b>: você recebeu <b>${brl(ganho)}</b>.` };
+        checar(); render();
+      }
+
+      /* ---------- Roleta ---------- */
+      const maxRoleta = () => Math.max(0, Math.min(S.saldo, ROLETA_TETO, Math.max(ROLETA_MIN_MAX, Math.floor(patrimonio(S) * ROLETA_LIMITE))));
+      function htmlRoda() {
+        const grad = RODA.map((id, i) => `${ROLETA.find(o => o.id === id).cor} ${i * RODA_PASSO}deg ${(i + 1) * RODA_PASSO}deg`).join(',');
+        const rot = RODA.map((id, i) => `<span class="mi-rl" style="transform:rotate(${(i + 0.5) * RODA_PASSO}deg) translateY(-92px)">${rotuloMult(ROLETA.find(o => o.id === id).mult)}</span>`).join('');
+        return `<div class="mi-roda-box"><span class="mi-ponteiro">▼</span><div class="mi-roda" id="rl-roda" style="background:conic-gradient(${grad});transform:rotate(${rodaRot}deg)">${rot}<i class="mi-hub">🎡</i></div></div>`;
+      }
+      function vRoleta() {
+        const max = maxRoleta(), pode = max >= MIN_VALOR;
+        const ini = Math.max(Math.min(MIN_VALOR, max), Math.min(max, ultimaAposta));
+        const chips = [10, 50, 100, 500, 1000].filter(v => v < max).concat(pode ? [max] : []);
+        const tabela = ROLETA.map(o => `<div class="mi-rt" style="--c:${o.cor}"><span>${o.icone}</span><b>${xf(o.mult)}</b><small>${o.nome}</small><small>${pctR(o.chance)}</small></div>`).join('');
+        const hist = S.roletaHist.length ? `<h4>Últimas rodadas</h4><ul class="mi-hist">${S.roletaHist.slice().reverse().slice(0, 5).map(h => `<li><span>${brl(h.aposta)} → ${xf(h.mult)}</span><b class="${h.liq >= 0 ? 'g' : 'p'}">${sinal(h.liq)}</b></li>`).join('')}</ul>` : '';
+        return `<h3>🎡 ROLETA</h3>
+          <p class="mi-aviso">🎲 <b>Os resultados são aleatórios e você pode perder o dinheiro virtual que colocar.</b> O retorno médio é de ${(ROLETA_RETORNO * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%: a longo prazo, a roleta tende a gastar o seu saldo.</p>
+          ${htmlRoda()}
+          <p class="mi-nota">A roda é só ilustrativa. As chances reais de cada resultado estão na tabela abaixo.</p>
+          ${caixaRes(resRl)}
+          <div class="mi-voo"><div><small>Saldo atual</small><b>${brl(S.saldo)}</b></div><div><small>Valor selecionado</small><b id="rl-sel">${pode ? brl(ini) : '-'}</b></div><div><small>Máximo por rodada</small><b>${brl(max)}</b></div></div>
+          ${pode ? `<div class="mi-form"><input id="mi-v" class="jg-in mi-in" type="number" inputmode="numeric" min="${MIN_VALOR}" max="${max}" step="1" data-max="${max}" value="${ini}" placeholder="R$">
+            <div class="mi-chips">${chips.map((v, i) => `<button class="mi-chip" data-a="valr" data-v="${v}">${i === chips.length - 1 ? 'Máximo' : brl(v)}</button>`).join('')}</div>
+            <p class="jg-msg" id="mi-err"></p><button class="btn big" data-a="girarR" ${rolando ? 'disabled' : ''}>🎡 Girar roleta</button></div>
+            <p class="mi-nota">Valor mínimo ${brl(MIN_VALOR)}. Máximo por rodada: 10% do seu patrimônio (pelo menos ${brl(ROLETA_MIN_MAX)}), até ${brl(ROLETA_TETO)}, e nunca mais do que você tem disponível.</p>`
+          : `<div class="mi-res perdeu"><p>Você precisa de pelo menos ${brl(MIN_VALOR)} disponíveis para girar a roleta.</p></div>`}
+          <h4>Resultados possíveis</h4><div class="mi-rtab">${tabela}</div>${hist}`;
+      }
+      function girarRoleta() {
+        if (rolando) return;
+        const x = lerValor(); if (x === null) return;
+        const max = maxRoleta();
+        if (x > S.saldo || x > max) { $('#mi-err').textContent = `Valor acima do permitido. O máximo agora é ${brl(max)}.`; return; }
+        let r = Math.random() * 100, out = ROLETA[ROLETA.length - 1];
+        for (const o of ROLETA) { if ((r -= o.chance) < 0) { out = o; break; } }
+        const ganho = Math.floor(x * out.mult), liq = ganho - x;
+        S.saldo += liq; ultimaAposta = x;                       // o resultado já vale e fica salvo; a animação só mostra
+        S.stats.roletas++; S.stats.roletaSaldo += liq; S.stats.roletaMaxMult = Math.max(S.stats.roletaMaxMult, out.mult);
+        S.roletaHist.push({ aposta: x, mult: out.mult, liq }); S.roletaHist = S.roletaHist.slice(-10);
+        guardar();
+        rolando = { x, ganho, liq, out }; resRl = null;
+        const slots = RODA.map((id, i) => id === out.id ? i : -1).filter(i => i >= 0), slot = slots[Math.floor(Math.random() * slots.length)];
+        const centro = (slot + 0.5) * RODA_PASSO + (Math.random() - 0.5) * RODA_PASSO * 0.5;
+        rodaRot = Math.ceil(rodaRot / 360) * 360 + 360 * 4 + (360 - centro);
+        const roda = $('#rl-roda'), bt = $('[data-a="girarR"]');
+        if (bt) bt.disabled = true;
+        if (roda) { void roda.offsetWidth; roda.style.transition = 'transform 2.4s cubic-bezier(.12,.7,.15,1)'; roda.style.transform = `rotate(${rodaRot}deg)`; }
+        toR = setTimeout(() => fimRoleta(true), 2500);
+      }
+      function fimRoleta(desenhar) {
+        const r = rolando; if (!r) return;
+        rolando = null; clearTimeout(toR);
+        resRl = { ok: r.liq >= 0, txt: `${r.out.icone} <b>${r.out.nome}</b> (${xf(r.out.mult)}). Você colocou ${brl(r.x)} e recebeu <b>${brl(r.ganho)}</b>: ${r.liq >= 0 ? (r.liq > 0 ? 'lucro' : 'sem lucro nem prejuízo') : 'prejuízo'} de ${sinal(r.liq)}.` };
+        WowGames.evento({ jogo: 'milhao', tipo: 'roleta', partida: true, mult: r.out.mult, aposta: r.x, ganho: r.ganho });
+        checar();
+        if (desenhar) render();
+      }
+
+      /* ---------- Banco ---------- */
+      const limiteBanco = () => Math.min(S.saldo, Math.max(100, Math.floor(patrimonio(S) * BANCO_LIMITE)));
+      function vBanco() {
+        const k = S.banco;
+        if (!k) return `<h3>🏦 Banco</h3><p>Deixe o dinheiro virtual trabalhar: ele fica bloqueado por <b>5 minutos reais</b> e volta multiplicado por <b>${BANCO_MULT}</b>. Só é possível ter um investimento ativo por vez, e cada depósito tem um limite.</p>${caixaRes(resBk)}${form(limiteBanco(), 'depositar', '🏦 Depositar')}`;
+        const resto = k.fim - Date.now(), pronto = resto <= 0;
+        if (pronto) return `<div class="mi-res ok ca-pop"><h3>🎉 INVESTIMENTO CONCLUÍDO!</h3><p>Você recebeu <b>${brl(k.valor * BANCO_MULT)}</b>.</p></div><button class="btn big" data-a="resgatar">RESGATAR</button>`;
+        return `<h3>🏦 INVESTIMENTO ATIVO</h3>
+          <div class="mi-voo"><div><small>Valor</small><b>${brl(k.valor)}</b></div><div><small>Retorno</small><b>${brl(k.valor * BANCO_MULT)}</b></div><div><small>Tempo restante</small><b id="bk-t">${mmss(resto)}</b></div></div>
+          <div class="mi-barra"><i id="bk-b" style="width:${Math.min(100, (1 - resto / BANCO_MS) * 100)}%"></i></div><p><b>AGUARDANDO...</b> Você pode jogar nos outros desafios enquanto espera, e fechar a página sem perder o tempo.</p>`;
+      }
+      function bancoTick() {
+        const k = S.banco;
+        if (!k) { bkPronto = false; return; }
+        const resto = k.fim - Date.now(), pronto = resto <= 0;
+        if (pronto !== bkPronto) { bkPronto = pronto; return render(); }
+        if ($('#bk-t')) { $('#bk-t').textContent = mmss(resto); $('#bk-b').style.width = Math.min(100, (1 - resto / BANCO_MS) * 100) + '%'; }
+      }
+
+      /* ---------- Início, estatísticas e vitória ---------- */
+      function vInicio() {
+        const op = (id, ic, nome, d, c) => `<button class="mi-opcao ${c}" data-a="aba" data-v="${id}"><span>${ic}</span><b>${nome}</b><small>${d}</small></button>`;
+        return `<h2>💰 Rumo ao Milhão</h2><p>Você começa com R$1.000. Consegue transformar isso em R$1.000.000?</p>
+          <div class="mi-opcoes">${op('foguete', '🚀', 'FOGUETE', 'Desafio de multiplicação', 'a')}${op('bomba', '💣', 'BOMBA', 'Desafio de risco', 'b')}${op('banco', '🏦', 'BANCO', 'Deixe seu dinheiro trabalhar', 'c')}${op('roleta', '🎡', 'ROLETA', 'Gire e arrisque', 'd')}</div>`;
+      }
+      function vInfo() {
+        const st = S.stats, linhas = [['Patrimônio atual', brl(patrimonio(S))], ['Maior patrimônio alcançado', brl(S.maxPat)], ['Desafios do Foguete', st.foguetes], ['Desafios da Bomba', st.bombas],
+          ['Investimentos no Banco', st.bancos], ['Rodadas da Roleta', st.roletas], ['Maior resultado da Roleta', st.roletaMaxMult ? xf(st.roletaMaxMult) : '-'], ['Resultado total da Roleta', st.roletas ? sinal(st.roletaSaldo) : '-'], ['Maior multiplicador coletado', st.maxMult ? xf(st.maxMult) : '-'], ['Tempo total jogando', horas(st.tempoMs)],
+          ['Progresso até R$1.000.000', Math.min(100, patrimonio(S) / META * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%']];
+        const proxima = METAS.find(m => m.pat && !S.metas[m.id]);
+        const vis = METAS.filter(m => S.metas[m.id] || m === proxima || (!m.pat && m.mostrar(S)));
+        return `<h3>📊 Estatísticas</h3><div class="mi-stats">${linhas.map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('')}</div>
+          <h3>🏆 Metas</h3><div class="mi-metas">${vis.map(m => `<div class="mi-meta ${S.metas[m.id] ? 'ok' : ''}"><span>${S.metas[m.id] ? '✅' : m.icone}</span><div><b>${m.nome}</b><small>${m.desc}${m.premio && !S.metas[m.id] ? ' | recompensa ' + brl(m.premio) : ''}</small></div></div>`).join('')}</div>
+          <p><small>🔒 Novas metas aparecem conforme você avança.</small></p><button class="link" data-a="reiniciar">Reiniciar este jogo</button>`;
+      }
+      function telaVitoria() {
+        const v = S.venceu;
+        return `<div class="ca-capa ca-pop">🏆</div><h2 class="mi-c">VOCÊ CHEGOU AO MILHÃO!</h2>
+          <p class="mi-c">Você transformou R$1.000 em R$1.000.000 de dinheiro virtual.</p>
+          <div class="mi-stats"><div><small>Patrimônio final</small><b>${brl(v.pat)}</b></div><div><small>Tempo necessário</small><b>${horas(v.tempoMs)}</b></div><div><small>Maior multiplicador</small><b>${v.maxMult ? xf(v.maxMult) : '-'}</b></div>
+            <div><small>Desafios jogados</small><b>${v.desafios}</b></div><div><small>Investimentos no Banco</small><b>${v.bancos}</b></div></div>
+          <p class="mi-c">Dá para fazer mais rápido? Jogue de novo e tente baixar o seu tempo.</p><div class="mi-c"><button class="btn big" data-a="novo">JOGAR NOVAMENTE</button></div>`;
+      }
+
+      const ABAS = [['inicio', '🏠 Início'], ['foguete', '🚀 Foguete'], ['bomba', '💣 Bomba'], ['banco', '🏦 Banco'], ['roleta', '🎡 Roleta'], ['info', '📊 Metas e estatísticas']];
+      function render() {
+        if (S.venceu) el.innerHTML = `<div class="mi">${telaVitoria()}</div>`;
+        else {
+          const corpo = { inicio: vInicio, foguete: vFoguete, bomba: vBomba, banco: vBanco, roleta: vRoleta, info: vInfo }[aba]();
+          const sem = S.saldo < MIN_VALOR && !S.foguete && !S.bomba && !S.banco;
+          el.innerHTML = `<div class="mi">${topo()}${avisos.map(a => `<div class="mi-meta-aviso ca-pop">${a}</div>`).join('')}
+            <nav class="ca-abas">${ABAS.map(([id, n]) => `<button class="ca-aba ${aba === id ? 'on' : ''}" data-a="aba" data-v="${id}">${n}${id === 'banco' && bkPronto ? ' ✅' : ''}</button>`).join('')}</nav>
+            ${sem ? '<div class="mi-res perdeu"><p>Você ficou sem dinheiro virtual. Que tal recomeçar com R$1.000?</p><button class="btn" data-a="recomecar">Recomeçar</button></div>' : ''}
+            <div class="mi-corpo ca-fade">${corpo}</div>
+            <p class="mi-nota">Todo o dinheiro deste jogo é virtual e fictício. Não existe dinheiro real, depósito, saque ou prêmio real.</p></div>`;
+        }
+        if (festa) { festa = false; WowGames.confetti(el, ['💰', '✨', '🎉', '🏆']); }
+      }
+
+      function reiniciar() { S = novoEstado(); guardar(); cancelAnimationFrame(raf); clearTimeout(toR); rolando = null; resRl = null; rodaRot = 0; resFg = resBm = resBk = null; avisos = []; aba = 'inicio'; bkPronto = false; }
+
+      el.onclick = e => {
+        const b = e.target.closest('[data-a]'); if (!b || b.disabled) return;
+        const v = b.dataset.v; avisos = [];
+        switch (b.dataset.a) {
+          case 'aba': aba = v; break;
+          case 'pct': {
+            const i = $('#mi-v'), max = Number(i.dataset.max);
+            i.value = Math.max(Math.min(MIN_VALOR, max), Math.min(max, Math.floor(max * Number(v) / 100))); return;
+          }
+          case 'lancar': { const x = lerValor(); if (x === null) return; S.saldo -= x; S.stats.foguetes++; S.foguete = { stake: x, inicio: Date.now(), crash: crashPoint() }; resFg = null; checar(); render(); return voo(); }
+          case 'valr': { const i = $('#mi-v'); if (!i) return; i.value = Math.min(Number(i.dataset.max), Number(v)); i.dispatchEvent(new Event('input', { bubbles: true })); return; }
+          case 'girarR': return girarRoleta();
+          case 'coletarF': return coletarFoguete();
+          case 'iniciarB': { const x = lerValor(); if (x === null) return; iniciarBomba(x); checar(); break; }
+          case 'cx': return escolhaBomba(Number(v));
+          case 'coletarB': return coletarBomba(false);
+          case 'depositar': { const x = lerValor(); if (x === null) return; if (S.banco) return; S.saldo -= x; S.banco = { valor: x, inicio: Date.now(), fim: Date.now() + BANCO_MS }; resBk = null; bkPronto = false; checar(); break; }
+          case 'resgatar': {
+            const k = S.banco; if (!k || Date.now() < k.fim) return;
+            const g = k.valor * BANCO_MULT; S.saldo += g; S.banco = null; S.stats.bancos++; bkPronto = false;
+            WowGames.evento({ jogo: 'milhao', tipo: 'banco', partida: true });
+            resBk = { ok: true, txt: `✅ Você resgatou ${brl(g)} do Banco.` }; checar(); break;
+          }
+          case 'recomecar': reiniciar(); break;
+          case 'novo': case 'reiniciar': if (!confirm('Isso apaga apenas o progresso deste jogo (Rumo ao Milhão). Continuar?')) return; reiniciar(); break;
+        }
+        render();
       };
-      desenhar();
-      return () => { clearInterval(iv); clearTimeout(to); clearTimeout(avTo); enviarEventos(pendente); };   // se sair no meio, o estado já está salvo; só avisa o perfil
+
+      el.oninput = e => {                                        // mostra o valor selecionado da roleta enquanto digita
+        if (e.target.id !== 'mi-v' || !$('#rl-sel')) return;
+        const v = Math.floor(Number(e.target.value));
+        $('#rl-sel').textContent = e.target.value && isFinite(v) && v > 0 ? brl(v) : '-';
+      };
+      iv = setInterval(() => {
+        const agora = Date.now();
+        if (!document.hidden && !S.venceu) S.stats.tempoMs += Math.min(agora - ult, 5000);
+        ult = agora; bancoTick(); guardar();
+      }, 1000);
+
+      /* Retomar o que estava em andamento ao abrir a página */
+      if (S.foguete) { if (mult((Date.now() - S.foguete.inicio) / 1000) >= S.foguete.crash) perdeFoguete(true); else voo(); }
+      checar(); render();
+      return () => { cancelAnimationFrame(raf); clearInterval(iv); fimRoleta(false); guardar(); };
     }
   });
 })();
