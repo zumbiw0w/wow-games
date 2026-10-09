@@ -209,6 +209,7 @@
         return `<div class="ca-capa ca-pop">🔎</div><h2>CASO RESOLVIDO</h2><p>Você descobriu quem roubou o colar!</p>
           <div class="tp-res"><div>⏱️ Tempo<b>${mmss(r.tempo)}</b></div><div>🔎 Pistas<b>${S.pistas.length}/${N}</b></div><div>❌ Erros<b>${S.erros}</b></div></div>
           <p class="ca-estrela">⭐ ${pts(r.pontos)} pontos</p>
+          ${WowGames.Pontos ? WowGames.Pontos.html(r.pt) : ''}
           <p class="ca-rec">${r.recTempo ? '🏅 Novo melhor tempo! ' : ''}${r.recPontos ? '🏅 Nova melhor pontuação! ' : ''}Casos resolvidos: <b>${rec.resolvidos}</b></p>
           <div class="ca-painel"><h3>A solução</h3>${SOLUCAO}</div>
           <p>Dá para chegar ao culpado mais rápido e com menos erros. Jogue de novo e tente superar seu recorde.</p>
@@ -242,7 +243,8 @@
         if (recPontos) rec.melhorPontos = pontos;
         rec.resolvidos++;
         S.resultado = { tempo: S.acum, pontos, recTempo, recPontos };
-        WowGames.evento({ jogo: 'caso001', tipo: 'fim', partida: true, tempo: S.acum / 1000, erros: S.erros, pontos, pistas: S.pistas.length });
+        const rp = WowGames.evento({ jogo: 'caso001', tipo: 'fim', partida: true, tempo: S.acum / 1000, erros: S.erros, pontos, pistas: S.pistas.length });
+        if (rp && rp.base > 0) S.resultado.pt = { pontos: rp.pontos, base: rp.base, total: rp.total, reduzido: rp.reduzido };
         gravar(K_REC, rec); gravar(K_ESTADO, S);
         return true;
       }
