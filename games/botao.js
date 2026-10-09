@@ -104,7 +104,7 @@ WowGames.register({
       });
 
       function win() {
-        WowGames.evento({ jogo: 'botao', tipo: 'fim', partida: true, tempo: total, tentativas: tries });
+        const rp = WowGames.evento({ jogo: 'botao', tipo: 'fim', partida: true, tempo: total, tentativas: tries });
         const msg = tries <= 30 ? 'Você é bom nisso.'
           : tries <= 50 ? 'Boa! Persistência é uma virtude.'
           : tries <= 80 ? 'Finalmente!'
@@ -114,6 +114,7 @@ WowGames.register({
           <h2>${msg}</h2>
           <p>Você conseguiu em <b>${WowGames.fmt(total)} segundos</b>!</p>
           <p>Foram <b>${tries}</b> tentativas para acertar o botão ${META} vezes.</p>
+          ${WowGames.Pontos ? WowGames.Pontos.html(rp) : ''}
           <button class="btn big" id="b-again">Jogar de novo</button>`;
         el.querySelector('#b-again').onclick = start;
         WowGames.confetti(el, ['🎉', '🔴', '✨']);
