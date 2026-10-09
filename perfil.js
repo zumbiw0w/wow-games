@@ -14,10 +14,14 @@
     ler() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { console.error('[wow.games] Não foi possível ler o perfil do localStorage:', e); return {}; } },
     gravar(P) { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { console.error('[wow.games] Não foi possível gravar o perfil no localStorage:', e); } }
   };
-  const base = () => ({ nome: 'Jogador', avatar: '🦊', xp: 0, partidas: 0, jogos: {}, conquistas: {}, recordes: {}, desafiosConcluidos: 0, recuperacao: null, diario: { dia: '', concluido: false, progresso: 0 } });
+  const base = () => ({ nome: 'Jogador', avatar: '🦊', xp: 0, partidas: 0, jogos: {}, conquistas: {}, recordes: {}, desafiosConcluidos: 0, recuperacao: null, diario: { dia: '', concluido: false, progresso: 0 },
+    pontuacao: 0, pontosDia: { dia: '', n: {} }, loja: { comprados: {}, equipado: {} } });
   function carregar() {
     const b = base(), s = armazem.ler();
-    return Object.assign(b, s, { jogos: s.jogos || {}, conquistas: s.conquistas || {}, recordes: s.recordes || {}, diario: Object.assign(b.diario, s.diario || {}) });
+    return Object.assign(b, s, { jogos: s.jogos || {}, conquistas: s.conquistas || {}, recordes: s.recordes || {}, diario: Object.assign(b.diario, s.diario || {}),
+      pontuacao: Math.max(0, Math.floor(Number(s.pontuacao)) || 0),                                            // pontuação total (separada do XP)
+      pontosDia: Object.assign(b.pontosDia, s.pontosDia || {}, { n: Object.assign({}, s.pontosDia && s.pontosDia.n) }),
+      loja: { comprados: Object.assign({}, s.loja && s.loja.comprados), equipado: Object.assign({}, s.loja && s.loja.equipado) } });   // itens da loja (loja.js)
   }
 
   const JOGOS = [], CONQ = [], DESAFIOS = [];
@@ -64,6 +68,7 @@
   /* ---------- Evento: ponto único de entrada dos jogos ---------- */
   function evento(ev) {
     if (!ev || !ev.jogo) return;
+    let resultado = { pontos: 0 };                                       // devolvido ao jogo, que mostra "PONTUAÇÃO: XXX"
     Perfil.eventosRecebidos = (Perfil.eventosRecebidos || 0) + 1; Perfil.ultimoEvento = ev;   // usados só pelo diagnóstico
     if (!JOGOS.length || !CONQ.length) console.warn('[wow.games] Evento recebido, mas há ' + JOGOS.length + ' jogos e ' + CONQ.length + ' conquistas registrados. conquistas.js foi carregado?');
     try {
@@ -100,12 +105,16 @@
           toast(`🏆 <b>CONQUISTA DESBLOQUEADA!</b><span>“${esc(c.nome)}”</span><small>+${c.xp || 50} XP</small>`, 'conquista');
         }
       }
+      if (Perfil.pontuar) {                                                // pontuação global (pontuacao.js), sem relação com XP
+        try { resultado = Perfil.pontuar(ev, P) || resultado; } catch (e) { console.error('[wow.games] Erro no sistema de pontuação:', e); }
+      }
       darXP(P, xp);
       armazem.gravar(P);
     } catch (e) {
       // O sistema de perfil nunca deve quebrar um jogo, mas o erro precisa aparecer no console para ser corrigido.
       console.error('[wow.games] Erro no sistema de perfil/conquistas:', e);
     }
+    return resultado;
   }
 
   Object.assign(Perfil, {
@@ -131,6 +140,9 @@
   };
 
   /* ---------- Interface: faixa da página inicial ---------- */
+  const avatarDe = (P, grande) => (WowGames.Loja ? WowGames.Loja.avatar(P, grande) : `<span class="pf-av ${grande ? 'grande' : ''}">${P.avatar}</span>`);
+  const tituloDe = P => (WowGames.Loja ? WowGames.Loja.tituloHtml(P) : '');
+  const pts = n => (n || 0).toLocaleString('pt-BR');
   const barra = pct => `<div class="pf-barra"><i style="width:${Math.max(pct, 2)}%"></i></div>`;
   function homeExtra() {
     const P = carregar();
@@ -139,8 +151,9 @@
     const prog = d.alvo && !feito ? `<p class="pf-prog">Progresso: <b>${Math.min(P.diario.progresso, d.alvo)}/${d.alvo}</b></p>` : '';
     return `
       <section class="pf-faixa">
-        <a class="pf-perfil" href="#/perfil"><span class="pf-av">${P.avatar}</span>
-          <div class="pf-info"><b>${esc(P.nome)}</b><small>Nível ${r.nivel} | ${P.xp} XP</small>${barra(r.pct)}</div></a>
+        <a class="pf-perfil" href="#/perfil">${avatarDe(P)}
+          <div class="pf-info"><b>${esc(P.nome)}</b>${tituloDe(P)}<small>Nível ${r.nivel} | ${P.xp} XP</small><small>🏆 Pontuação: ${pts(P.pontuacao)}</small>${barra(r.pct)}</div></a>
+        ${WowGames.Loja ? WowGames.Loja.botaoHtml() : ''}
         <a class="btn" href="#/conquistas">🏆 Conquistas ${Object.keys(P.conquistas).length}/${CONQ.length}</a>
       </section>
       <section class="pf-dia ${feito ? 'feito' : ''}">
@@ -154,24 +167,26 @@
   const fmtData = iso => new Date(iso).toLocaleDateString('pt-BR');
   function paginaPerfil(el) {
     function desenhar() {
+      if (WowGames.Loja) WowGames.Loja.aplicarCursor();                  // mantém o cursor da loja em dia (ex.: depois de recuperar ou apagar o perfil)
       const P = carregar(), r = resumoXP(P.xp);
       const nConq = Object.keys(P.conquistas).length, nJogos = Object.keys(P.jogos).length;
       const geral = Math.round((nConq + nJogos) / ((CONQ.length + JOGOS.length) || 1) * 100);
       const recs = [];
       JOGOS.forEach(j => (j.recordes || []).forEach(rc => { const x = P.recordes[j.id + ':' + rc.id]; if (x) recs.push(`<li><span>${j.icone || ''} ${rc.rotulo}</span><b>${rc.fmt ? rc.fmt(x.valor) : x.valor}</b></li>`); }));
       el.innerHTML = `<div class="pf">
-        <div class="pf-topo"><span class="pf-av grande">${P.avatar}</span>
-          <div><label for="pf-nome"><b>Seu apelido</b></label><input id="pf-nome" class="jg-in pf-nome" maxlength="16" autocomplete="off"></div></div>
+        <div class="pf-topo">${avatarDe(P, true)}
+          <div><label for="pf-nome"><b>Seu apelido</b></label><input id="pf-nome" class="jg-in pf-nome" maxlength="16" autocomplete="off">${tituloDe(P)}<p class="pf-pont">🏆 Pontuação<br><b>${pts(P.pontuacao)} pontos</b></p></div></div>
         <h3>Nível ${r.nivel}</h3>${barra(r.pct)}<p class="pf-prog">${r.atual}/${r.total} XP para o nível ${r.nivel + 1}</p>
         <h4>Escolha seu avatar</h4>
         <div class="pf-avs">${AVATARES.map(a => `<button class="pf-avb ${a === P.avatar ? 'sel' : ''}" data-av="${a}" aria-label="Avatar ${a}">${a}</button>`).join('')}</div>
         <div class="pf-stats">
           <div><small>XP acumulado</small><b>${P.xp}</b></div><div><small>Nível atual</small><b>${r.nivel}</b></div>
           <div><small>Partidas jogadas</small><b>${P.partidas}</b></div><div><small>Jogos diferentes</small><b>${nJogos}/${JOGOS.length}</b></div>
-          <div><small>Conquistas</small><b>${nConq}/${CONQ.length}</b></div><div><small>Desafios do dia</small><b>${P.desafiosConcluidos}</b></div></div>
+          <div><small>Conquistas</small><b>${nConq}/${CONQ.length}</b></div><div><small>Desafios do dia</small><b>${P.desafiosConcluidos}</b></div>
+          <div><small>🏆 Pontuação</small><b>${pts(P.pontuacao)}</b></div></div>
         <h4>Progresso geral</h4>${barra(geral)}<p class="pf-prog">${geral}% (conquistas e jogos experimentados)</p>
         <h4>🏅 Recordes pessoais</h4>${recs.length ? `<ul class="pf-recs">${recs.join('')}</ul>` : '<p>Jogue para registrar seus recordes.</p>'}
-        <div class="pf-acoes"><a class="btn" href="#/conquistas">🏆 Ver conquistas</a></div>
+        <div class="pf-acoes"><a class="btn" href="#/conquistas">🏆 Ver conquistas</a> ${WowGames.Loja ? WowGames.Loja.botaoHtml() : ''}</div>
         <div id="pf-rec"></div>
         <button class="link" data-a="apagar">Apagar dados do perfil</button></div>`;
       el.querySelector('#pf-nome').value = P.nome;
@@ -181,7 +196,7 @@
     el.onclick = e => {
       const av = e.target.closest('[data-av]'), ap = e.target.closest('[data-a="apagar"]');
       if (av) { const P = carregar(); P.avatar = av.dataset.av; armazem.gravar(P); desenhar(); }
-      if (ap && confirm('Apagar nível, XP, conquistas e recordes deste navegador? Os jogos não são afetados.')) { armazem.gravar(base()); desenhar(); }
+      if (ap && confirm('Apagar nível, XP, conquistas, recordes, pontuação e itens da loja deste navegador? As moedas da Máquina e os jogos não são afetados.')) { armazem.gravar(base()); desenhar(); }
     };
     desenhar();
   }
