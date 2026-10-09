@@ -114,7 +114,7 @@ WowGames.register({
     function fim() {
       cancelAnimationFrame(raf);
       const tempo = (performance.now() - t0) / 1000;
-      WowGames.evento({ jogo: 'cor', tipo: 'fim', partida: true, tempo, erros, acertos, pontos });
+      const rp = WowGames.evento({ jogo: 'cor', tipo: 'fim', partida: true, tempo, erros, acertos, pontos });
       const nivel = pontos >= 1800 ? 'Reflexos de campeão! ⚡' : pontos >= 1200 ? 'Muito bem!' : pontos >= 600 ? 'Dá para melhorar.' : 'Respire fundo e tente de novo.';
       el.innerHTML = `
         <div class="big-emoji">🎯</div>
@@ -125,6 +125,7 @@ WowGames.register({
           <div>Erros<b>${erros}</b></div>
           <div>Tempo<b>${WowGames.fmt(tempo)}s</b></div>
         </div>
+        ${WowGames.Pontos ? WowGames.Pontos.html(rp) : ''}
         <button class="btn big" id="c-again">Jogar novamente</button>`;
       el.querySelector('#c-again').onclick = inicio;
       if (pontos >= 1200) WowGames.confetti(el, ['🎨', '✨', '🎉']);
