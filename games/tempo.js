@@ -57,7 +57,7 @@
         const dec = (performance.now() - t0) / 1000;
         const erro = dec - alvo;
         historico.push({ alvo, dec, erro });
-        WowGames.evento({ jogo: 'tempo', tipo: 'rodada', partida: true, erro: Math.abs(erro), alvo, dec });
+        const rp = WowGames.evento({ jogo: 'tempo', tipo: 'rodada', partida: true, erro: Math.abs(erro), alvo, dec });
         main.innerHTML = `
           <div class="tp-res">
             <div>Tempo-alvo<b>${WowGames.fmt(alvo)}s</b></div>
@@ -65,6 +65,7 @@
             <div>Erro<b>${sinal(erro)}</b></div>
           </div>
           <h2>${avaliar(Math.abs(erro))}</h2>
+          ${WowGames.Pontos ? WowGames.Pontos.html(rp) : ''}
           <button class="btn big" id="tp-again">Jogar novamente</button>`;
         main.querySelector('#tp-again').onclick = () => { alvo = sortear(); pronto(); historicoUI(); };
         if (Math.abs(erro) < 0.10) WowGames.confetti(el, ['⏱️', '✨', '🎉']);
