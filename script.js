@@ -69,6 +69,8 @@ const WowGames = (() => {
   });
 
   // evento e homeExtra começam vazios e são preenchidos por perfil.js
-  const api = { register, registerPage, fmt, confetti, evento: () => {}, homeExtra: () => '' };
+  // recarregar(): redesenha só o início e o perfil (usado pela loja ao fechar), sem reiniciar um jogo em andamento
+  const recarregar = () => { const h = location.hash.replace('#/', ''); if (h === '' || h === 'perfil') { const y = window.scrollY; route(); window.scrollTo(0, y); } };
+  const api = { register, registerPage, fmt, confetti, evento: () => {}, homeExtra: () => '', recarregar };
   return api;
 })();
