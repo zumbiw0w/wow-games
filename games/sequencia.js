@@ -72,7 +72,7 @@ WowGames.register({
       cancelAnimationFrame(raf);
       const tempo = (performance.now() - t0) / 1000;
       const pontos = Math.max(0, Math.round(2000 - tempo * 8 - erros * 50));
-      WowGames.evento({ jogo: 'sequencia', tipo: 'fim', partida: true, tempo, erros, pontos });
+      const rp = WowGames.evento({ jogo: 'sequencia', tipo: 'fim', partida: true, tempo, erros, pontos });
       const nivel = pontos >= 1500 ? 'Mente brilhante! 🧠' : pontos >= 1000 ? 'Muito bom!' : pontos >= 500 ? 'Bom trabalho.' : 'Completou, e isso é o que importa.';
       el.innerHTML = `
         <div class="big-emoji">🏁</div>
@@ -82,6 +82,7 @@ WowGames.register({
           <div>Erros<b>${erros}</b></div>
           <div>Pontuação<b>${pontos}</b></div>
         </div>
+        ${WowGames.Pontos ? WowGames.Pontos.html(rp) : ''}
         <p>As sequências são sempre as mesmas. Jogue de novo e tente baixar seu tempo.</p>
         <button class="btn big" id="s-again">Jogar novamente</button>`;
       el.querySelector('#s-again').onclick = inicio;
