@@ -29,6 +29,10 @@
   // Probabilidade de cada prêmio = chance da raridade dividida pelo número de prêmios dela
   const tamanho = RAR.map((_, i) => PREMIOS.filter(p => p.r === i).length);
   PREMIOS.forEach(p => { p.peso = RAR[p.r].chance / tamanho[p.r]; });
+  // Ordem VISUAL da coleção: sempre da raridade mais alta para a mais baixa (Mítico, Lendário, Muito raro, Raro, Incomum, Comum).
+  // Dentro de cada raridade vale a ordem em que os itens foram cadastrados acima. Isso só afeta a exibição: o sorteio usa PREMIOS como está,
+  // então itens novos de qualquer raridade nunca "furam a fila" na tela, não importa quando forem adicionados.
+  const PREMIOS_NA_TELA = PREMIOS.map((p, i) => ({ p, i })).sort((a, b) => b.p.r - a.p.r || a.i - b.i).map(x => x.p);
   // Giro da Sorte: o peso de raro, muito raro e lendário é multiplicado por SORTE e o sorteio
   // continua aleatório (os pesos são renormalizados, não há prêmio garantido).
   const SORTE = 3, GIROS_POR_SORTE = 10;
@@ -161,7 +165,8 @@
         est.moedas -= custo; est.nivel++; salvar();
         const m = MAQUINAS[est.nivel - 1];
         msgEvol = `🎉 MÁQUINA EVOLUÍDA!<br>Agora você tem a ${m.icone} ${m.nome}.`;
-        WowGames.evento({ jogo: 'premios', tipo: 'evolucao', nivel: est.nivel });
+        const rpEv = WowGames.evento({ jogo: 'premios', tipo: 'evolucao', nivel: est.nivel });
+        if (WowGames.Pontos && rpEv && rpEv.base > 0) msgEvol += `<br>🏆 PONTUAÇÃO: ${WowGames.Pontos.fmt(rpEv.pontos)}`;
         desenhar();
         WowGames.confetti(el, [m.icone, '✨', '⬆️']);
       }
@@ -211,7 +216,7 @@
           `<div><b>${est.giros}</b>giros</div><div><b>${n}/${PREMIOS.length}</b>descobertos</div>` +
           `<div><b>${top ? top.e + ' ' + top.n : '—'}</b>mais raro</div>`;
         $('pz-tit').textContent = `Prêmios descobertos: ${n}/${PREMIOS.length}`;
-        $('pz-col').innerHTML = PREMIOS.map(p => est.achados[p.id]
+        $('pz-col').innerHTML = PREMIOS_NA_TELA.map(p => est.achados[p.id]
           ? `<div class="pz-cell" style="--c:${RAR[p.r].cor}"><span class="e">${p.e}</span>${p.n}<small>${RAR[p.r].nome} ×${est.achados[p.id]}</small></div>`
           : `<div class="pz-cell off"><span class="e">❔</span>???</div>`).join('');
       }
@@ -236,7 +241,7 @@
       function enviarEventos(pend) {
         if (!pend || pend.enviado) return;
         pend.enviado = true;
-        for (const r of pend.res) WowGames.evento({ jogo: 'premios', tipo: 'giro', partida: true, raridade: r.p.r, novo: r.novo, sorte: r.sorte, descobertos: r.descobertos, nivel: r.nivel, lote: pend.res.length });
+        for (const r of pend.res) r.pt = WowGames.evento({ jogo: 'premios', tipo: 'giro', partida: true, raridade: r.p.r, novo: r.novo, sorte: r.sorte, descobertos: r.descobertos, nivel: r.nivel, lote: pend.res.length });
       }
 
       function girar(sorte) {
@@ -271,6 +276,11 @@
         }
         return msgs;
       }
+      // soma a pontuação de um lote de giros para mostrar um único "PONTUAÇÃO" no resumo
+      function somaPontos(res) {
+        const v = res.map(y => y.pt).filter(p => p && p.base > 0);
+        return v.length ? { pontos: v.reduce((t, p) => t + p.pontos, 0), base: v.reduce((t, p) => t + p.base, 0), total: v[v.length - 1].total, reduzido: v.some(p => p.reduzido) } : null;
+      }
       function fimDoLote(res) {
         enviarEventos(pendente); pendente = null;
         girando = false;
@@ -284,6 +294,7 @@
 
       function revelar() {
         clearInterval(iv);
+        enviarEventos(pendente);                                  // perfil: XP, conquistas e pontuação de cada giro
         const res = pendente.res, n = res.length;
         if (n === 1) {                                           // 1 giro: exatamente como antes
           const x = res[0], p = x.p, r = RAR[p.r];
@@ -293,7 +304,8 @@
             r.falas[Math.floor(Math.random() * r.falas.length)] +
             (x.ganhouSorte ? '<div class="novo">⭐ Você ganhou um Giro da Sorte!</div>' : '') +
             (x.novo ? '' : `<div class="rep">🔁 ITEM REPETIDO!</div><div class="moedas">🪙 +${x.moedasRepetido} moedas</div>`) +
-            (x.moedasExtra ? `<div class="moedas">🎁 Giro Extra: 🪙 +${x.moedasExtra} moedas</div>` : '');
+            (x.moedasExtra ? `<div class="moedas">🎁 Giro Extra: 🪙 +${x.moedasExtra} moedas</div>` : '') +
+            (WowGames.Pontos ? WowGames.Pontos.html(x.pt) : '');
           return fimDoLote(res);
         }
         // 2 ou 3 giros: um cardzinho por giro, em sequência, e um resumo no final
@@ -305,13 +317,14 @@
           const card = document.createElement('div');
           card.className = 'pz-card'; card.style.setProperty('--c', r.cor);
           card.innerHTML = `<small>GIRO ${i + 1}</small><span class="e">${p.e}</span><b>${p.n}</b><small>${r.nome}</small>` +
-            (x.novo ? '<em>NOVO!</em>' : `<small>🪙 +${x.moedasRepetido + x.moedasExtra}</small>`);
+            (x.novo ? '<em>NOVO!</em>' : `<small>🪙 +${x.moedasRepetido + x.moedasExtra}</small>`) +
+            (x.pt && x.pt.base > 0 ? `<small>🏆 +${WowGames.Pontos.fmt(x.pt.pontos)}</small>` : '');
           $('pz-lote').appendChild(card);
           i++;
           if (i < n) { to = setTimeout(passo, 450); return; }
           const moedas = res.reduce((t, y) => t + y.moedasRepetido + y.moedasExtra, 0), novos = res.filter(y => y.novo).length, sortes = res.filter(y => y.ganhouSorte).length;
           $('pz-resumo').innerHTML = `<b>${n} giros realizados</b><br>🪙 +${moedas} moedas${novos ? ` | ✨ ${novos} ${novos > 1 ? 'novos prêmios' : 'novo prêmio'}` : ''}${sortes ? ` | ⭐ +${sortes} Giro da Sorte` : ''}<br>` +
-            `<small>Itens obtidos: ${res.map(y => y.p.e + ' ' + y.p.n).join(', ')}</small>` + (res.some(y => y.moedasExtra) ? '<br><small>🎁 Giro Extra incluído</small>' : '');
+            `<small>Itens obtidos: ${res.map(y => y.p.e + ' ' + y.p.n).join(', ')}</small>` + (res.some(y => y.moedasExtra) ? '<br><small>🎁 Giro Extra incluído</small>' : '') + (WowGames.Pontos ? WowGames.Pontos.html(somaPontos(res)) : '');
           fimDoLote(res);
         };
         passo();
