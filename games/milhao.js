@@ -81,7 +81,8 @@
         if (!S.venceu && patrimonio(S) >= META) {
           S.venceu = { pat: patrimonio(S), tempoMs: S.stats.tempoMs, maxMult: S.stats.maxMult, desafios: S.stats.foguetes + S.stats.bombas, bancos: S.stats.bancos };
           festa = true;
-          WowGames.evento({ jogo: 'milhao', tipo: 'fim', partida: true, patrimonio: patrimonio(S) });
+          const rp = WowGames.evento({ jogo: 'milhao', tipo: 'fim', partida: true, patrimonio: patrimonio(S) });
+          if (rp && rp.base > 0) S.venceu.pt = { pontos: rp.pontos, base: rp.base, total: rp.total, reduzido: rp.reduzido };
         }
         guardar();
       }
@@ -137,8 +138,8 @@
       }
       function perdeFoguete(fora) {
         const f = S.foguete; S.foguete = null;
-        WowGames.evento({ jogo: 'milhao', tipo: 'foguete', partida: true, mult: 0, perdeu: true });
-        resFg = { ok: false, txt: `💥 O foguete parou em <b>${xf(f.crash)}</b>${fora ? ' enquanto você estava fora' : ''}. Você perdeu ${brl(f.stake)} de dinheiro virtual.` };
+        const rp = WowGames.evento({ jogo: 'milhao', tipo: 'foguete', partida: true, mult: 0, perdeu: true });   // derrota: 0 pontos
+        resFg = { ok: false, txt: `💥 O foguete parou em <b>${xf(f.crash)}</b>${fora ? ' enquanto você estava fora' : ''}. Você perdeu ${brl(f.stake)} de dinheiro virtual.` + (WowGames.Pontos ? WowGames.Pontos.html(rp) : '') };
         checar(); render();
       }
       function coletarFoguete() {
@@ -148,8 +149,8 @@
         cancelAnimationFrame(raf);
         const ganho = Math.floor(f.stake * m); S.saldo += ganho; S.foguete = null;
         S.stats.maxMult = Math.max(S.stats.maxMult, m);
-        WowGames.evento({ jogo: 'milhao', tipo: 'foguete', partida: true, mult: m, ganho });
-        resFg = { ok: true, txt: `✅ Você coletou em <b>${xf(m)}</b> e recebeu <b>${brl(ganho)}</b> (${ganho >= f.stake ? 'lucro' : 'resultado'} de ${brl(ganho - f.stake)}).` };
+        const rp = WowGames.evento({ jogo: 'milhao', tipo: 'foguete', partida: true, mult: m, ganho });
+        resFg = { ok: true, txt: `✅ Você coletou em <b>${xf(m)}</b> e recebeu <b>${brl(ganho)}</b> (${ganho >= f.stake ? 'lucro' : 'resultado'} de ${brl(ganho - f.stake)}).` + (WowGames.Pontos ? WowGames.Pontos.html(rp) : '') };
         checar(); render();
       }
 
@@ -176,7 +177,8 @@
         const [n] = NIVEIS[b.nivel];
         if (b.bombas.includes(i)) {
           resBm = { ok: false, rev: { n, bombas: b.bombas, esc: i }, txt: `💥 Era a bomba! Você perdeu ${brl(b.stake)} de dinheiro virtual no nível ${b.nivel + 1}. Veja onde ela estava:` };
-          WowGames.evento({ jogo: 'milhao', tipo: 'bomba', partida: true, perdeu: true, niveis: b.nivel });
+          const rp = WowGames.evento({ jogo: 'milhao', tipo: 'bomba', partida: true, perdeu: true, niveis: b.nivel });
+          if (WowGames.Pontos) resBm.txt += WowGames.Pontos.html(rp);
           S.bomba = null; return checar(), render();
         }
         b.mult = Math.round(b.mult * PASSO[b.nivel] * 100) / 100; b.nivel++;
@@ -189,8 +191,8 @@
         const b = S.bomba; if (!b) return;
         const ganho = Math.floor(b.stake * b.mult); S.saldo += ganho; S.bomba = null;
         S.stats.maxMult = Math.max(S.stats.maxMult, b.mult);
-        WowGames.evento({ jogo: 'milhao', tipo: 'bomba', partida: true, mult: b.mult, niveis: b.nivel });
-        resBm = { ok: true, txt: `${completo ? '🏁 Você passou por todos os níveis! ' : '✅ '}Multiplicador final <b>${xf(b.mult)}</b>: você recebeu <b>${brl(ganho)}</b>.` };
+        const rp = WowGames.evento({ jogo: 'milhao', tipo: 'bomba', partida: true, mult: b.mult, niveis: b.nivel });
+        resBm = { ok: true, txt: `${completo ? '🏁 Você passou por todos os níveis! ' : '✅ '}Multiplicador final <b>${xf(b.mult)}</b>: você recebeu <b>${brl(ganho)}</b>.` + (WowGames.Pontos ? WowGames.Pontos.html(rp) : '') };
         checar(); render();
       }
 
@@ -291,6 +293,7 @@
           <p class="mi-c">Você transformou R$1.000 em R$1.000.000 de dinheiro virtual.</p>
           <div class="mi-stats"><div><small>Patrimônio final</small><b>${brl(v.pat)}</b></div><div><small>Tempo necessário</small><b>${horas(v.tempoMs)}</b></div><div><small>Maior multiplicador</small><b>${v.maxMult ? xf(v.maxMult) : '-'}</b></div>
             <div><small>Desafios jogados</small><b>${v.desafios}</b></div><div><small>Investimentos no Banco</small><b>${v.bancos}</b></div></div>
+          ${WowGames.Pontos ? WowGames.Pontos.html(v.pt) : ''}
           <p class="mi-c">Dá para fazer mais rápido? Jogue de novo e tente baixar o seu tempo.</p><div class="mi-c"><button class="btn big" data-a="novo">JOGAR NOVAMENTE</button></div>`;
       }
 
@@ -331,8 +334,8 @@
           case 'resgatar': {
             const k = S.banco; if (!k || Date.now() < k.fim) return;
             const g = k.valor * BANCO_MULT; S.saldo += g; S.banco = null; S.stats.bancos++; bkPronto = false;
-            WowGames.evento({ jogo: 'milhao', tipo: 'banco', partida: true });
-            resBk = { ok: true, txt: `✅ Você resgatou ${brl(g)} do Banco.` }; checar(); break;
+            const rp = WowGames.evento({ jogo: 'milhao', tipo: 'banco', partida: true });
+            resBk = { ok: true, txt: `✅ Você resgatou ${brl(g)} do Banco.` + (WowGames.Pontos ? WowGames.Pontos.html(rp) : '') }; checar(); break;
           }
           case 'recomecar': reiniciar(); break;
           case 'novo': case 'reiniciar': if (!confirm('Isso apaga apenas o progresso deste jogo (Rumo ao Milhão). Continuar?')) return; reiniciar(); break;
