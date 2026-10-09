@@ -114,7 +114,7 @@ WowGames.register({
       cancelAnimationFrame(raf);
       const tempo = (performance.now() - t0) / 1000;
       const pontos = Math.max(0, Math.round(3000 - tempo * 10 - erros * 100));
-      WowGames.evento({ jogo: 'matematica', tipo: 'fim', partida: true, tempo, erros, pontos });
+      const rp = WowGames.evento({ jogo: 'matematica', tipo: 'fim', partida: true, tempo, erros, pontos });
       const nivel = pontos >= 2200 ? 'Calculadora humana. 🤖' : pontos >= 1500 ? 'Muito bom!' : pontos >= 800 ? 'Bom resultado.' : 'Terminou, e isso já conta.';
       el.innerHTML = `
         <div class="big-emoji">🏁</div>
@@ -124,6 +124,7 @@ WowGames.register({
           <div>Erros<b>${erros}</b></div>
           <div>Pontuação<b>${pontos}</b></div>
         </div>
+        ${WowGames.Pontos ? WowGames.Pontos.html(rp) : ''}
         <p>Dá para fazer mais rápido? Jogue de novo e tente baixar esse tempo.</p>
         <button class="btn big" id="m-again">Jogar novamente</button>`;
       el.querySelector('#m-again').onclick = inicio;
