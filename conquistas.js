@@ -27,12 +27,18 @@
     xp: ev => ev.tipo === 'foguete' ? 8 + (ev.mult >= 2 ? 10 : 0) : ev.tipo === 'bomba' ? 8 + 2 * (ev.niveis || 0) : ev.tipo === 'banco' ? 15 : ev.tipo === 'roleta' ? 5 + (ev.mult >= 3 ? 5 : 0) : ev.tipo === 'fim' ? 500 : 0,
     recordes: [{ id: 'patrimonio', rotulo: 'Rumo ao Milhão: maior patrimônio', melhor: 'maior', valor: ev => ev.tipo === 'progresso' ? ev.maxPat : null, fmt: v => 'R$' + num(v) }] });
 
+  P.registrarJogo({ id: 'peso', nome: 'Adivinhe o Peso', icone: '⚖️', xp: ev => 20 + (ev.acertos || 0) * 6,
+    recordes: [{ id: 'acertos', rotulo: 'Adivinhe o Peso: mais acertos', melhor: 'maior', valor: ev => ev.acertos, fmt: v => v + ' de 10' },
+               { id: 'pontos', rotulo: 'Adivinhe o Peso: maior pontuação', melhor: 'maior', valor: ev => ev.pontos, fmt: num }] });
+  P.registrarJogo({ id: 'supervelha', nome: 'Super Jogo da Velha', icone: '🔳',
+    xp: ev => ev.modo !== 'maquina' ? 0 : ev.resultado === 'vitoria' ? ({ facil: 30, medio: 60, dificil: 100 }[ev.dificuldade] || 30) : ev.resultado === 'empate' ? 20 : 10 });   // partida local não dá XP
+
   /* ----- Conquistas ----- */
   const perfeito = ev => ev.tipo === 'fim' && ev.erros === 0 && ['matematica', 'cor', 'sequencia', 'caso001'].includes(ev.jogo);
   [
     { id: 'relampago', icone: '⚡', nome: 'Relâmpago', desc: 'Termine O Botão em menos de 25s ou o Complete a Sequência em menos de 60s.',
       ok: ev => (fim(ev, 'botao') && ev.tempo < 25) || (fim(ev, 'sequencia') && ev.tempo < 60) },
-    { id: 'genio', icone: '🧠', nome: 'Gênio', desc: 'Termine a Matemática Relâmpago com 2.200 pontos ou mais.', ok: ev => fim(ev, 'matematica') && ev.pontos >= 2200 },
+    { id: 'genio', icone: '🧠', nome: 'Gênio', desc: 'Termine a Matemática Relâmpago com 1.800 pontos ou mais.', ok: ev => fim(ev, 'matematica') && ev.pontos >= 1800 },
     { id: 'relogio', icone: '⏱️', nome: 'Relógio Humano', desc: 'Pare no Tempo com erro de no máximo 0,05s.', ok: ev => ev.jogo === 'tempo' && ev.erro <= 0.05 },
     { id: 'detetive', icone: '🔎', nome: 'Detetive', desc: 'Resolva o Caso #001.', ok: ev => fim(ev, 'caso001') },
     { id: 'milionario', icone: '💰', nome: 'Milionário', desc: 'Alcance R$1.000.000 no Rumo ao Milhão.', ok: ev => fim(ev, 'milhao') },
@@ -57,7 +63,15 @@
       ok: ev => ev.jogo === 'milhao' && ev.tipo === 'roleta' && ev.mult >= 10 },
     { id: 'experiente', icone: '⭐', nome: 'Jogador Experiente', desc: 'Alcance o nível 5 do perfil.', xp: 100, alvo: 5, prog: p => P.nivelDe(p.xp) },
     { id: 'multitarefa', icone: '🎪', nome: 'Multitarefa', desc: 'Jogue pelo menos 3 partidas em 5 jogos diferentes.', xp: 100, alvo: 5,
-      prog: p => Object.values(p.jogos).filter(n => n >= 3).length }
+      prog: p => Object.values(p.jogos).filter(n => n >= 3).length },
+
+    /* ----- Jogos 9 e 10 ----- */
+    { id: 'bomestimativa', icone: '📏', nome: 'Bom de Estimativa', desc: 'Acerte pelo menos 5 das 10 perguntas do Adivinhe o Peso numa partida.', xp: 80, ok: ev => fim(ev, 'peso') && ev.acertos >= 5 },
+    { id: 'especialistapesos', icone: '⚖️', nome: 'Especialista em Pesos', desc: 'Acerte pelo menos 8 das 10 perguntas do Adivinhe o Peso numa partida.', xp: 200, ok: ev => fim(ev, 'peso') && ev.acertos >= 8 },
+    { id: 'superestrategista', icone: '♟️', nome: 'Super Estrategista', desc: 'Vença a máquina no Super Jogo da Velha no modo Médio ou Difícil.', xp: 150,
+      ok: ev => fim(ev, 'supervelha') && ev.modo === 'maquina' && ev.resultado === 'vitoria' && (ev.dificuldade === 'medio' || ev.dificuldade === 'dificil') },
+    { id: 'mestresuper', icone: '👑', nome: 'Mestre do Super Jogo', desc: 'Vença a máquina no Super Jogo da Velha no modo Difícil.', xp: 400,
+      ok: ev => fim(ev, 'supervelha') && ev.modo === 'maquina' && ev.resultado === 'vitoria' && ev.dificuldade === 'dificil' }
   ].forEach(c => P.registrarConquista(c));
 
   /* ----- Desafios do dia (um por dia, em rotação) ----- */
