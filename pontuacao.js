@@ -7,6 +7,7 @@
      limite: quantas pontuações cheias por dia esse jogo dá. Passou disso, o ritmo cai (25% e depois 10%), para ninguém
              ganhar pontos infinitos repetindo o mesmo jogo.
      semLimite(ev): (opcional) eventos únicos e raros que nunca são reduzidos (ex.: vencer o Rumo ao Milhão).
+     chave(ev): (opcional) separa o limite diário em contadores diferentes (ex.: um por dificuldade). Padrão: um contador por jogo.
      mostrarZero(ev): (opcional) se a partida terminou mas rendeu 0 pontos, a tela mostra "PONTUAÇÃO: 0" em vez de nada. */
 (function () {
   const Perfil = WowGames.Perfil;
@@ -31,6 +32,18 @@
   REGRAS.sequencia = { limite: 3, calcula: ev => ev.tipo === 'fim' ? num(ev.pontos) : 0 };      // as sequências são sempre as mesmas, por isso o limite é menor
   REGRAS.caso001 = { limite: 1, calcula: ev => ev.tipo === 'fim' ? num(ev.pontos) : 0 };         // o caso é sempre o mesmo, só a primeira solução do dia vale tudo
 
+  // Adivinhe o Peso: o jogo soma os pontos das rodadas (acerto, nível e acerto exato) + bônus de desempenho. Erro não pontua.
+  REGRAS.peso = { limite: 5, mostrarZero: ev => ev.tipo === 'fim', calcula: ev => ev.tipo === 'fim' ? num(ev.pontos) : 0 };
+
+  // Super Jogo da Velha: só pontua contra a máquina, e vale mais em dificuldade maior. Vitória > empate > derrota.
+  // Partida local (2 pessoas no mesmo aparelho) NÃO pontua: seria repetível sem limite só alternando partidas. Cada dificuldade tem seu próprio limite diário.
+  const VELHA = { facil: { vitoria: 150, empate: 30, derrota: 0 }, medio: { vitoria: 400, empate: 80, derrota: 15 }, dificil: { vitoria: 1000, empate: 200, derrota: 40 } };
+  REGRAS.supervelha = { limite: 4, chave: ev => 'supervelha:' + (ev.dificuldade || 'local'), mostrarZero: ev => ev.modo === 'maquina',
+    calcula: ev => {
+      if (ev.tipo !== 'fim' || ev.modo !== 'maquina' || !VELHA[ev.dificuldade]) return 0;
+      return (VELHA[ev.dificuldade][ev.resultado] || 0) + Math.min(9, num(ev.tabuleiros)) * 10;   // +10 por tabuleiro menor conquistado
+    } };
+
   // Rumo ao Milhão: pontua o DESEMPENHO (multiplicador alcançado, níveis da bomba), nunca o valor apostado. A roleta não pontua.
   REGRAS.milhao = { limite: 15, mostrarZero: ev => (ev.tipo === 'foguete' || ev.tipo === 'bomba') && !!ev.perdeu,
     calcula: ev => {
@@ -52,8 +65,9 @@
     if (!(r.semLimite && r.semLimite(ev)) && r.limite) {
       const hoje = Perfil.hoje();
       if (P.pontosDia.dia !== hoje) P.pontosDia = { dia: hoje, n: {} };
-      const n = P.pontosDia.n[ev.jogo] || 0;                           // pontuações deste jogo hoje, antes desta
-      P.pontosDia.n[ev.jogo] = n + 1;
+      const chave = r.chave ? r.chave(ev) : ev.jogo;
+      const n = P.pontosDia.n[chave] || 0;                             // pontuações deste jogo hoje, antes desta
+      P.pontosDia.n[chave] = n + 1;
       fator = n < r.limite ? 1 : n < r.limite * 3 ? 0.25 : 0.1;
     }
     const pontos = Math.round(base * fator);
