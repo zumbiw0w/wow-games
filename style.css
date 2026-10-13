@@ -387,3 +387,55 @@ body.lj-cursor-on,body.lj-cursor-on *{cursor:none!important}
 @keyframes lj-chama{to{scale:1.1;rotate:-6deg}}
 @keyframes lj-brilho{50%{filter:drop-shadow(0 0 12px #4de8ff) brightness(1.25)}}
 @media (prefers-reduced-motion:reduce){.lj-av,.lj-cursor span,.lj-cur-prev{animation:none!important}}
+
+/* ===== Jogo 9: Adivinhe o Peso ===== */
+.pw-par{display:flex;align-items:center;justify-content:center;gap:clamp(.4rem,3vw,1.6rem);margin:.4rem 0 .8rem}
+.pw-an{display:flex;flex-direction:column;align-items:center;gap:.2rem;min-width:7rem;padding:.6rem .8rem;background:#fff;border:3px solid var(--ink);border-radius:20px;box-shadow:0 5px 0 var(--ink)}
+.pw-e{font-size:clamp(3.6rem,17vw,6.5rem);line-height:1}
+.pw-seta{font-size:clamp(1.6rem,7vw,2.6rem);font-weight:900}
+.pw-perg{font-size:clamp(1.05rem,3.6vw,1.4rem);margin:.4rem 0 .8rem;line-height:1.35}
+.pw-dica{background:#fff0b8;border:3px solid var(--ink);border-radius:12px;padding:.5rem .8rem;font-weight:700}
+.pw-nivel b{padding:.05rem .5rem;border:2px solid var(--ink);border-radius:99px;background:var(--mint)}
+.pw-nivel.n1 b{background:var(--sky)}.pw-nivel.n2 b{background:var(--sun)}.pw-nivel.n3 b{background:var(--coral);color:#fff}
+.pw-res{margin:.6rem auto;max-width:34rem;padding:.8rem 1rem;border:3px solid var(--ink);border-radius:16px;text-align:center}
+.pw-res h3{margin:.1rem 0}.pw-res p{margin:.35rem 0}
+.pw-res.exato{background:#e1fbee}.pw-res.perto{background:#fff3c4}.pw-res.erro{background:#ffe0e5}
+.pw-conta{font-size:.92rem;background:rgba(255,255,255,.7);border-radius:10px;padding:.4rem .6rem}
+.pw-pts{font-weight:900}
+.pw-resumo{list-style:none;margin:.8rem auto;padding:0;max-width:34rem;display:grid;gap:.35rem;text-align:left}
+.pw-resumo li{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.3rem .7rem;font-size:.92rem}
+.pw-resumo li.exato{background:#e1fbee}.pw-resumo li.perto{background:#fff3c4}.pw-resumo li.erro{background:#ffe0e5}
+
+/* ===== Jogo 10: Super Jogo da Velha ===== */
+.sv-menu{max-width:34rem;margin:.6rem auto}.sv-menu h3{margin:.8rem 0 .3rem}
+.sv-ops{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.sv-op{font:inherit;font-weight:800;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.55rem .9rem;min-height:44px;cursor:pointer}
+.sv-op.on{background:var(--ink);color:var(--sun)}
+.sv-nota{font-weight:700;background:#fff0b8;border:3px solid var(--ink);border-radius:12px;padding:.5rem .8rem}
+.sv-regras{max-width:34rem;margin:1rem auto 0;text-align:left}.sv-regras summary{cursor:pointer;font-weight:800;text-align:center}
+.sv-regras ol{padding-left:1.2rem;line-height:1.4}
+.sv-info{display:flex;justify-content:space-between;gap:.4rem 1rem;flex-wrap:wrap;max-width:36rem;margin:0 auto .4rem;font-weight:700;font-size:.95rem}
+.s1,.sv-vez.s1{color:var(--coral)}.s2,.sv-vez.s2{color:var(--sky)}
+.sv-status{min-height:3.2em;max-width:36rem;margin:.2rem auto .5rem;font-weight:700;line-height:1.35}
+.sv-vez{display:inline-block;min-width:1.6em;padding:0 .3em;margin-right:.2rem;background:var(--ink);border-radius:8px;font-weight:900}
+.sv-aviso{display:block;margin-top:.25rem;font-size:.88rem;background:#fff0b8;border:2px solid var(--ink);border-radius:10px;padding:.2rem .6rem}
+.sv-tab{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(4px,1.4vw,9px);width:min(100%,34rem);margin:.4rem auto;padding:clamp(4px,1.4vw,9px);background:var(--ink);border-radius:18px;touch-action:manipulation}
+.sv-b{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(1px,.5vw,3px);padding:clamp(2px,.8vw,5px);background:#fff;border:3px solid transparent;border-radius:10px;transition:box-shadow .15s}
+.sv-b.alvo{border-color:var(--sun);background:#fff8dc;box-shadow:0 0 0 3px var(--sun),0 0 16px 4px rgba(255,201,51,.95);animation:sv-pulso 1.1s ease-in-out infinite;z-index:1}
+.sv-b.livre{border-color:var(--mint);background:#effcf6}
+@keyframes sv-pulso{50%{box-shadow:0 0 0 3px var(--sun),0 0 6px 1px rgba(255,201,51,.6)}}
+.sv-c{aspect-ratio:1;min-width:0;padding:0;font:inherit;font-weight:900;font-size:clamp(.85rem,4.4vw,1.7rem);line-height:1;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:6px;cursor:default}
+.sv-c.v1{color:var(--coral)}.sv-c.v2{color:var(--sky)}
+.sv-c.ok{cursor:pointer;background:#fffbe6}
+.sv-c.ok:hover,.sv-c.ok:focus-visible{background:var(--sun);outline:none}
+.sv-c:disabled{opacity:1}.sv-c:disabled:not(.v1):not(.v2){opacity:.45}
+.sv-c.ult{outline:3px solid var(--ink);outline-offset:-3px;background:#ffe9a8}
+.sv-big{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(2.6rem,15vw,5.6rem);font-weight:900;border-radius:8px;background:rgba(255,253,247,.9);pointer-events:none}
+.sv-b.x .sv-big{color:var(--coral)}.sv-b.o .sv-big{color:var(--sky)}.sv-b.e .sv-big{color:#8a86a8;background:rgba(233,228,255,.92)}
+.sv-b.x{border-color:var(--coral)}.sv-b.o{border-color:var(--sky)}
+.sv-btns{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin:.6rem 0}
+.sv-fim{max-width:36rem;margin:.4rem auto .6rem;padding:.8rem 1rem;border:3px solid var(--ink);border-radius:18px;box-shadow:0 5px 0 var(--ink);text-align:center;background:#fff}
+.sv-fim h3{margin:.1rem 0}.sv-fim p{margin:.3rem 0}
+.sv-fim.vitoria{background:#e1fbee}.sv-fim.derrota{background:#ffe0e5}.sv-fim.empate{background:#fff3c4}
+.sv-tab.fim .sv-c{opacity:1}
+@media (prefers-reduced-motion:reduce){.sv-b.alvo{animation:none}}
