@@ -33,6 +33,12 @@
   P.registrarJogo({ id: 'supervelha', nome: 'Super Jogo da Velha', icone: '🔳',
     xp: ev => ev.modo !== 'maquina' ? 0 : ev.resultado === 'vitoria' ? ({ facil: 30, medio: 60, dificil: 100 }[ev.dificuldade] || 30) : ev.resultado === 'empate' ? 20 : 10 });   // partida local não dá XP
 
+  // Laboratório de Elementos: sandbox sem pontuação. Só rende XP em DESCOBERTAS (uma vez por material/reação), então não dá para farmar.
+  P.registrarJogo({ id: 'elementos', nome: 'Laboratório de Elementos', icone: '🧪',
+    xp: ev => ev.tipo === 'primeiro' ? 10 : ev.tipo === 'material' ? 10 : ev.tipo === 'reacao' ? 15 : 0,
+    recordes: [{ id: 'materiais', rotulo: 'Laboratório: materiais experimentados', melhor: 'maior', valor: ev => ev.materiais, fmt: v => v + '/12' },
+               { id: 'reacoes', rotulo: 'Laboratório: reações descobertas', melhor: 'maior', valor: ev => ev.reacoes, fmt: v => v + '/9' }] });
+
   /* ----- Conquistas ----- */
   const perfeito = ev => ev.tipo === 'fim' && ev.erros === 0 && ['matematica', 'cor', 'sequencia', 'caso001'].includes(ev.jogo);
   [
@@ -71,7 +77,17 @@
     { id: 'superestrategista', icone: '♟️', nome: 'Super Estrategista', desc: 'Vença a máquina no Super Jogo da Velha no modo Médio ou Difícil.', xp: 150,
       ok: ev => fim(ev, 'supervelha') && ev.modo === 'maquina' && ev.resultado === 'vitoria' && (ev.dificuldade === 'medio' || ev.dificuldade === 'dificil') },
     { id: 'mestresuper', icone: '👑', nome: 'Mestre do Super Jogo', desc: 'Vença a máquina no Super Jogo da Velha no modo Difícil.', xp: 400,
-      ok: ev => fim(ev, 'supervelha') && ev.modo === 'maquina' && ev.resultado === 'vitoria' && ev.dificuldade === 'dificil' }
+      ok: ev => fim(ev, 'supervelha') && ev.modo === 'maquina' && ev.resultado === 'vitoria' && ev.dificuldade === 'dificil' },
+
+    /* ----- Laboratório de Elementos (o jogo envia só descobertas; "sync" reconcilia um perfil com o que já foi descoberto antes) ----- */
+    { id: 'primeiroexperimento', icone: '🧪', nome: 'Primeiro Experimento', desc: 'Coloque materiais no mundo do Laboratório de Elementos pela primeira vez.', xp: 50,
+      ok: ev => ev.jogo === 'elementos' && (ev.tipo === 'primeiro' || (ev.tipo === 'sync' && ev.materiais > 0)) },
+    { id: 'reacaoemcadeia', icone: '🔥', nome: 'Reação em Cadeia', desc: 'Descubra 5 tipos diferentes de reações no Laboratório de Elementos.', xp: 120, alvo: 5,
+      prog: p => (p.recordes['elementos:reacoes'] || {}).valor || 0 },
+    { id: 'pequenojardineiro', icone: '🌱', nome: 'Pequeno Jardineiro', desc: 'Faça uma semente virar planta em terra úmida no Laboratório de Elementos.', xp: 100,
+      ok: ev => ev.jogo === 'elementos' && ((ev.tipo === 'reacao' && ev.reacao === 'germinar') || (ev.tipo === 'sync' && Array.isArray(ev.ids) && ev.ids.includes('germinar'))) },
+    { id: 'mestreelementos', icone: '⚗️', nome: 'Mestre dos Elementos', desc: 'Experimente os 12 materiais do Laboratório de Elementos.', xp: 250, alvo: 12,
+      prog: p => (p.recordes['elementos:materiais'] || {}).valor || 0 }
   ].forEach(c => P.registrarConquista(c));
 
   /* ----- Desafios do dia (um por dia, em rotação) ----- */
