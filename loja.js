@@ -114,7 +114,13 @@
     return `<span class="lj-av ${mol ? 'f m-' + mol.cls : ''}" ${mol ? `data-moldura="${mol.cls}"` : ''}>${miolo}</span>`;
   }
   function tituloHtml(P) { const t = equipadoDe(P, 'titulo'); return t ? `<small class="lj-titulo">${t.icone} ${esc(t.nome)}</small>` : ''; }
-  const botaoHtml = () => `<button type="button" class="btn lj-abrir" data-loja aria-haspopup="dialog">🛒 LOJA<small>🪙 ${fmt(moedas())}</small></button>`;
+  // Se o saldo subiu desde a última vez que o botão foi desenhado nesta visita, o botão mostra uma animação curta com o ganho.
+  let saldoVisto = null;
+  const botaoHtml = () => {
+    const s = moedas(), ganho = saldoVisto !== null && s > saldoVisto ? s - saldoVisto : 0;
+    saldoVisto = s;
+    return `<button type="button" class="btn lj-abrir ${ganho ? 'lj-subiu' : ''}" data-loja aria-haspopup="dialog">🛒 LOJA<small>🪙 ${fmt(s)}</small>${ganho ? `<i class="lj-mais" aria-hidden="true">+${fmt(ganho)}</i>` : ''}</button>`;
+  };
 
   /* ---------- Cursor personalizado (só computador com mouse) ----------
      Um elemento leve acompanha o mouse (1 elemento, só transform; os efeitos são animações CSS). O cursor do sistema só é escondido
