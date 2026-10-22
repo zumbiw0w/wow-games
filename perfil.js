@@ -58,6 +58,18 @@
       setTimeout(() => { t.classList.add('sai'); setTimeout(() => t.remove(), 400); }, 4200);
     } catch (e) {}
   }
+  // Animação discreta de "+XP" (um único elemento reaproveitado, sem empilhar avisos)
+  let xpEl = null, xpTo = 0, xpSoma = 0;
+  function mostrarXP(n) {
+    try {
+      if (!n) return;
+      if (!xpEl) { xpEl = document.createElement('div'); xpEl.className = 'wg-xp'; xpEl.setAttribute('aria-hidden', 'true'); document.body.appendChild(xpEl); }
+      xpSoma = xpEl.classList.contains('on') ? xpSoma + n : n;
+      xpEl.textContent = '+' + xpSoma + ' XP';
+      xpEl.classList.remove('on'); void xpEl.offsetWidth; xpEl.classList.add('on');
+      clearTimeout(xpTo); xpTo = setTimeout(() => { xpEl.classList.remove('on'); xpSoma = 0; }, 1600);
+    } catch (e) {}
+  }
   function darXP(P, n) {
     if (!n) return;
     const antes = nivelDe(P.xp); P.xp += n;
@@ -78,12 +90,17 @@
       let xp = def && def.xp ? (def.xp(ev) || 0) : 0;
       if (ev.partida) { P.partidas++; P.jogos[ev.jogo] = (P.jogos[ev.jogo] || 0) + 1; }
 
+      const novosRecordes = [];
       for (const r of (def && def.recordes) || []) {                      // recordes pessoais
         const v = r.valor(ev);
         if (typeof v !== 'number' || !isFinite(v)) continue;
         const k = def.id + ':' + r.id, atual = P.recordes[k];
-        if (!atual || (r.melhor === 'menor' ? v < atual.valor : v > atual.valor)) P.recordes[k] = { valor: v };
+        if (!atual || (r.melhor === 'menor' ? v < atual.valor : v > atual.valor)) {
+          if (atual) novosRecordes.push(r);                                // só avisa quando SUPERA um recorde anterior
+          P.recordes[k] = { valor: v };
+        }
       }
+      novosRecordes.slice(0, 1).forEach(r => toast(`🏅 <b>NOVO RECORDE!</b><span>${esc(r.rotulo)}</span><small>${esc(r.fmt ? r.fmt(P.recordes[def.id + ':' + r.id].valor) : P.recordes[def.id + ':' + r.id].valor)}</small>`, 'recorde'));
 
       const d = desafioDoDia(P.diario.dia);                                // desafio do dia
       if (d && !P.diario.concluido && d.jogo === ev.jogo) {
@@ -110,16 +127,22 @@
       }
       darXP(P, xp);
       armazem.gravar(P);
+      mostrarXP(xp);
     } catch (e) {
       // O sistema de perfil nunca deve quebrar um jogo, mas o erro precisa aparecer no console para ser corrigido.
       console.error('[wow.games] Erro no sistema de perfil/conquistas:', e);
     }
+    for (const fn of OUVINTES) {                                           // ex.: placar global (placar.js). Um erro aqui nunca afeta o jogo.
+      try { fn(ev, resultado); } catch (e) { console.error('[wow.games] Erro num ouvinte de eventos:', e); }
+    }
     return resultado;
   }
+  const OUVINTES = [];
 
   Object.assign(Perfil, {
     AVATARES, DESAFIO_XP, jogos: JOGOS, conquistas: CONQ, desafios: DESAFIOS,
     registrarJogo: d => JOGOS.push(d), registrarConquista: d => CONQ.push(d), registrarDesafio: d => DESAFIOS.push(d),
+    aoEvento: fn => { if (typeof fn === 'function') OUVINTES.push(fn); },             // é chamado DEPOIS que o evento foi processado e gravado
     CHAVE: KEY, atualizar: fn => { const P = carregar(); fn(P); armazem.gravar(P); return P; },
     dados: carregar, evento, desafioDoDia, nivelDe, xpDoNivel, resumoXP, toast
   });
@@ -155,6 +178,7 @@
           <div class="pf-info"><b>${esc(P.nome)}</b>${tituloDe(P)}<small>Nível ${r.nivel} | ${P.xp} XP</small><small>🏆 Pontuação: ${pts(P.pontuacao)}</small>${barra(r.pct)}</div></a>
         ${WowGames.Loja ? WowGames.Loja.botaoHtml() : ''}
         <a class="btn" href="#/conquistas">🏆 Conquistas ${Object.keys(P.conquistas).length}/${CONQ.length}</a>
+        ${WowGames.Placar ? '<a class="btn pf-placar" href="#/placar">🌍 Placar global</a>' : ''}
       </section>
       <section class="pf-dia ${feito ? 'feito' : ''}">
         <small>🔥 DESAFIO DO DIA</small>
@@ -188,7 +212,8 @@
         <h4>🏅 Recordes pessoais</h4>${recs.length ? `<ul class="pf-recs">${recs.join('')}</ul>` : '<p>Jogue para registrar seus recordes.</p>'}
         <div class="pf-acoes"><a class="btn" href="#/conquistas">🏆 Ver conquistas</a> ${WowGames.Loja ? WowGames.Loja.botaoHtml() : ''}</div>
         <div id="pf-rec"></div>
-        <button class="link" data-a="apagar">Apagar dados do perfil</button></div>`;
+        <button class="link" data-a="apagar">Apagar dados do perfil</button>
+        ${WowGames.Admin ? '<a class="link pf-admin" href="#/admin">🔧 Ferramentas de teste</a>' : ''}</div>`;
       el.querySelector('#pf-nome').value = P.nome;
       if (Perfil.montarRecuperacao) Perfil.montarRecuperacao(el.querySelector('#pf-rec'), desenhar);   // seção "Seu perfil" (perfil-recuperacao.js)
     }
