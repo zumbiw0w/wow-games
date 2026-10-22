@@ -27,28 +27,30 @@ const WowGames = (() => {
   function home() {
     document.title = 'wow.games: minijogos de poucos minutos';
     app().innerHTML = `
-      <main class="home">
+      <main class="home wg-entra">
         <header class="hero">
           <h1>wow.games</h1>
           <p>Uma coleção de minijogos rápidos. Escolha um e brinque por alguns minutos.</p>
         </header>
         ${api.homeExtra()}
-        <section class="grid">
+        ${api.antesDaGrade()}
+        <section class="grid" id="wg-grade">
           ${games.map(g => `
-            <article class="card">
-              <div class="ico" style="background:${g.cor}">${g.icone}</div>
+            <article class="card" data-jogo="${g.id}">
+              <div class="ico" style="background:${g.cor}">${g.icone}</div>${api.cardExtra(g)}
               <h2>${g.nome}</h2>
               <p>${g.desc}</p>
               <a class="btn" href="#/${g.id}">Jogar</a>
             </article>`).join('')}
         </section>
       </main>`;
+    api.depoisDoInicio(app());
   }
 
   function play(g) {
     document.title = g.nome + ' | wow.games';
     app().innerHTML = `
-      <main class="game">
+      <main class="game wg-entra">
         <nav><a class="btn small" href="#/">← Início</a><h1>${g.nome}</h1></nav>
         <section class="stage" id="stage"></section>
       </main>`;
@@ -71,6 +73,8 @@ const WowGames = (() => {
   // evento e homeExtra começam vazios e são preenchidos por perfil.js
   // recarregar(): redesenha só o início e o perfil (usado pela loja ao fechar), sem reiniciar um jogo em andamento
   const recarregar = () => { const h = location.hash.replace('#/', ''); if (h === '' || h === 'perfil') { const y = window.scrollY; route(); window.scrollTo(0, y); } };
-  const api = { register, registerPage, fmt, confetti, evento: () => {}, homeExtra: () => '', recarregar };
+  // antesDaGrade, cardExtra e depoisDoInicio são pontos de extensão da página inicial (usados por favoritos.js); por padrão não fazem nada.
+  const api = { register, registerPage, fmt, confetti, evento: () => {}, homeExtra: () => '', antesDaGrade: () => '', cardExtra: () => '', depoisDoInicio: () => {}, recarregar,
+    jogos: () => games.slice() };
   return api;
 })();
