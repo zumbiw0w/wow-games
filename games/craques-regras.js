@@ -4,7 +4,7 @@
    para poder ser salvo em wowgames.craques.v1 e testado fora do navegador. */
 (function () {
   const D = WowGames.CraquesDados || { ATLETAS: [], TIMES: [] };
-  const ORCAMENTO = 110, MIN_ELENCO = 11, MAX_ELENCO = 16;
+  const ORCAMENTO = 110, ORCAMENTO_COPA = 200, MIN_ELENCO = 11, MAX_ELENCO = 16;   // 110: Leilão entre Amigos | 200: Copa das Lendas
 
   /* ---------- Sorteio com semente (mesma semente = mesmo resultado) ---------- */
   function rng(seed) {
@@ -90,7 +90,7 @@
 
   /* ---------- Mercado da Copa das Lendas ---------- */
   function novaCampanha() {
-    return { versao: 1, id: novaSemente().toString(36), criada: new Date().toISOString(), etapa: 'mercado', orcamento: ORCAMENTO,
+    return { versao: 1, id: novaSemente().toString(36), criada: new Date().toISOString(), etapa: 'mercado', orcamento: ORCAMENTO_COPA,
       elenco: [], formacao: '4-3-3', estilo: 'equilibrado', titulares: new Array(11).fill(null), copa: null, partida: null, enviados: {} };
   }
   function podeComprar(c, id) {
@@ -253,7 +253,7 @@
   function restaurarJuvenis(L) { if (L && L.juvenis) Object.values(L.juvenis).forEach(a => { PORID[a.id] = a; }); }
   function restaurarExtras(copa) { if (copa) copa.times.forEach(t => (t.extras || []).forEach(a => { PORID[a.id] = a; })); }
 
-  WowGames.CraquesRegras = { ORCAMENTO, MIN_ELENCO, MAX_ELENCO, FORMACOES, ESTILOS, POS_NOME, SETOR, FASES,
+  WowGames.CraquesRegras = { ORCAMENTO, ORCAMENTO_COPA, MIN_ELENCO, MAX_ELENCO, FORMACOES, ESTILOS, POS_NOME, SETOR, FASES,
     rng, novaSemente, embaralhar, atleta, compat, nivelCompat, escalarAuto, analisar, novaCampanha, podeComprar, comprar, dispensar,
     forcaTime, sortearCopa, confrontos, filaLeilao, novoLeilao, abrirLote, maxLance, validarLance, darLance, desistir, podeEncerrar,
     completarComJuvenis, restaurarJuvenis, restaurarExtras, vagasMinimas };
