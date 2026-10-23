@@ -6,6 +6,6 @@
    NUNCA coloque aqui a chave "service_role" (ou "secret"): ela ignora as regras de segurança e daria controle total do banco.
    Enquanto url ou chaveAnon estiverem vazios, o placar mostra "não configurado" e nada é enviado pela rede. */
 WowGames.PlacarConfig = {
-  url: '',
-  chaveAnon: ''
+  url: 'https://zumbiw0w.github.io/wow-games/',
+  chaveAnon: 'sb_publishable_tjtr-_4Ti9_rVLFOLGOAFA_TqbhZ88_'
 };
