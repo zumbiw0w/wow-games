@@ -1,7 +1,7 @@
 /* Jogo 13: Leilão dos Craques — interface e integração com o wow.games.
    Dados: games/craques-dados.js | Regras: games/craques-regras.js | Partida e campo: games/craques-partida.js
    - Salvamento próprio e versionado: wowgames.craques.v1 = { v: 1, som, campanha, amigos } (entra sozinho no código de recuperação).
-   - A "verba" do jogo (110) existe só dentro do jogo. Ela NÃO é a moeda 🪙 da Loja e não mexe na carteira do site.
+   - A "verba" do jogo (200 na Copa das Lendas, 110 no Leilão entre Amigos) existe só dentro do jogo. Ela NÃO é a moeda 🪙 da Loja e não mexe na carteira do site.
    - XP, recordes, conquistas e pontuação: pelos sistemas existentes (WowGames.Perfil / WowGames.Pontos), um evento por partida/campanha.
    - Não entra no placar global: o resultado depende do elenco montado e não é comparável entre jogadores. */
 (function () {
@@ -104,7 +104,7 @@
           ${aviso()}
           <div class="lc-modos">
             <section class="lc-modo"><h3>🏆 Copa das Lendas</h3>
-              <p>Você tem ${VERBA(R.ORCAMENTO)} de verba para contratar atletas com preço fixo. Depois enfrenta equipes históricas sorteadas: quartas, semifinal e final. Perdeu, está fora.</p>
+              <p>Você tem ${VERBA(R.ORCAMENTO_COPA)} de verba para contratar atletas com preço fixo. Depois enfrenta equipes históricas sorteadas: quartas, semifinal e final. Perdeu, está fora.</p>
               ${c ? `<p class="lc-estado">Campanha salva: <b>${c.etapa === 'mercado' ? 'montando o elenco' : c.copa && c.copa.campeao ? 'campeão! 🏆' : c.copa && c.copa.eliminado ? 'eliminado' : R.FASES[c.copa ? c.copa.fase : 0]}</b></p>
                 <button class="btn" data-a="copa-continuar">Continuar campanha</button> <button class="btn small lc-sec" data-a="copa-nova">Nova campanha</button>`
                 : `<button class="btn" data-a="copa-nova">Começar campanha</button>`}
