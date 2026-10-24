@@ -942,3 +942,133 @@ body.lj-cursor-on,body.lj-cursor-on *{cursor:none!important}
   .lc-pen li{animation:none!important;opacity:1}
   .lc-golfx.on{opacity:1}
 }
+
+/* ===== wow.world (prefixo .wow-world-) ===== */
+.wow-world-banner{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:0 0 1.6rem;padding:1rem 1.2rem;border:3px solid var(--ink);border-radius:20px;box-shadow:0 6px 0 var(--ink);
+  background:radial-gradient(circle at 12% 20%,rgba(255,255,255,.35),transparent 40%),linear-gradient(120deg,#5b4a8a,#3a6fd8 55%,#3ddc97);color:#fff}
+.wow-world-banner small{font-weight:900;letter-spacing:.06em;color:var(--sun)}
+.wow-world-banner h2{font-size:1.8rem;margin:0}
+.wow-world-banner p{margin:.2rem 0 0;max-width:40ch;font-weight:700}
+.wow-world-banner>div:nth-child(2){flex:1;min-width:200px}
+.wow-world-banner-arte{font-size:2.2rem;filter:drop-shadow(0 3px 0 rgba(0,0,0,.25))}
+.wow-world{text-align:left}
+.wow-world h2,.wow-world h3,.wow-world h4{margin:0}
+.wow-world .btn.wow-world-sec{background:#fff}
+.wow-world-topo{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:.8rem}
+.wow-world-titulo{display:flex;align-items:center;gap:.6rem}
+.wow-world-titulo>span{font-size:2rem}
+.wow-world-titulo small{display:block;font-weight:800;opacity:.75}
+.wow-world-abas{display:flex;flex-wrap:wrap;gap:.4rem}
+.wow-world-aba{font:inherit;font-weight:900;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .8rem;cursor:pointer}
+.wow-world-aba.on{background:var(--sun);box-shadow:0 3px 0 var(--ink)}
+.wow-world-msg{font-weight:800;border:3px solid var(--ink);border-radius:12px;padding:.45rem .8rem;margin:.4rem 0}
+.wow-world-msg.ok{background:#e1fbee}.wow-world-msg.erro{background:#ffe0e5}
+.wow-world-flash{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:58;display:grid;gap:.3rem;pointer-events:none}
+.wow-world-flash span{background:linear-gradient(90deg,#5b4a8a,#3a6fd8);color:#fff;border:3px solid var(--ink);border-radius:14px;padding:.45rem .9rem;font-weight:900;box-shadow:0 4px 0 var(--ink);text-align:center}
+.wow-world-flash.on span{animation:wow-world-surge .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes wow-world-surge{from{opacity:0;transform:translateY(14px) scale(.9)}to{opacity:1;transform:none}}
+.wow-world-dica{font-size:.86rem;font-weight:600;opacity:.8}
+/* mapa */
+.wow-world-mapa{position:relative;aspect-ratio:10/7;border:3px solid var(--ink);border-radius:20px;overflow:hidden;box-shadow:0 6px 0 var(--ink)}
+.wow-world-mapa-arte,.wow-world-cena-arte{position:absolute;inset:0;width:100%;height:100%;display:block}
+.wow-world-regiao{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:.05rem;max-width:30%;font:inherit;color:var(--ink);background:rgba(255,253,247,.94);
+  border:3px solid var(--ink);border-radius:14px;padding:.3rem .55rem;cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .15s,box-shadow .15s;text-align:center;line-height:1.1}
+.wow-world-regiao:hover,.wow-world-regiao:focus-visible{transform:translate(-50%,-55%);box-shadow:0 7px 0 var(--ink)}
+.wow-world-regiao b{font-size:.85rem}
+.wow-world-regiao small{font-size:.66rem;font-weight:800;opacity:.75}
+.wow-world-regiao.visitada{border-color:var(--ink);background:#fff}
+.wow-world-regiao.visitada::after{content:'✓';position:absolute;top:-.6rem;right:-.5rem;width:1.3rem;height:1.3rem;display:grid;place-items:center;background:var(--mint);border:2px solid var(--ink);border-radius:50%;font-size:.75rem;font-weight:900}
+.wow-world-reg-ico{font-size:1.6rem;filter:drop-shadow(0 0 6px var(--c))}
+.wow-world-regiao:not(.visitada) .wow-world-reg-ico{animation:wow-world-pulsa 2.4s ease-in-out infinite}
+@keyframes wow-world-pulsa{50%{transform:scale(1.15)}}
+/* cenas das regiões */
+.wow-world-reg-topo{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem;margin-bottom:.4rem}
+.wow-world-reg-desc{font-weight:600;margin:.2rem 0 .6rem}
+.wow-world-cena{position:relative;aspect-ratio:16/9;border:3px solid var(--ink);border-radius:18px;overflow:hidden;box-shadow:0 5px 0 var(--ink)}
+.wow-world-cena-praca{background:linear-gradient(#ffe7b8,#ffd27a 60%,#e9d9b0 60%)}
+.wow-world-cena-floresta{background:linear-gradient(#1f5a3a,#3f9a5c)}
+.wow-world-cena-provas{background:linear-gradient(#ffb199,#ffd6c4 58%,#f2c4b8 58%)}
+.wow-world-cena-ilhas{background:linear-gradient(#8fd3ff,#3a6fd8)}
+.wow-world-cena-observatorio{background:linear-gradient(#141036,#3a2d6e)}
+.wow-world-ponto{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:0;font:inherit;color:var(--ink);background:rgba(255,253,247,.95);
+  border:3px solid var(--ink);border-radius:14px;padding:.25rem .5rem;cursor:pointer;box-shadow:0 4px 0 var(--ink);max-width:28%;line-height:1.1;transition:transform .15s}
+.wow-world-ponto span{font-size:1.5rem}
+.wow-world-ponto b{font-size:.75rem;text-align:center}
+.wow-world-ponto:hover{transform:translate(-50%,-56%)}
+.wow-world-ponto.sel{background:var(--sun)}
+.wow-world-ponto.wow-world-novo::after{content:'';position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;background:var(--coral);border:2px solid var(--ink);animation:wow-world-pulsa 1.6s ease-in-out infinite}
+.wow-world-ponto.aberto,.wow-world-ponto.aceso{box-shadow:0 0 0 3px var(--sun),0 4px 0 var(--ink)}
+.wow-world-ponto.fechado span{filter:grayscale(.4)}
+.wow-world-painel{margin-top:.9rem;background:#fff;border:3px solid var(--ink);border-radius:16px;padding:.8rem 1rem;min-height:4rem;animation:wg-entra .2s ease-out}
+.wow-world-painel h4{margin-bottom:.4rem}
+.wow-world-registro{margin:.4rem 0;background:#fff8e3;border-left:6px solid var(--sun);border-radius:10px;padding:.5rem .8rem}
+.wow-world-registro p{margin:.3rem 0 0;font-weight:600;font-style:italic}
+.wow-world-registro.eco{background:#efe8ff;border-left-color:#7b3fe4}
+.wow-world-fala{background:var(--bg);border-radius:12px;padding:.4rem .7rem;font-weight:700;margin:.3rem 0}
+.wow-world-portais{display:flex;flex-wrap:wrap;gap:.4rem}
+.wow-world-portal{display:inline-flex;align-items:center;gap:.35rem;font-weight:900;color:var(--ink);text-decoration:none;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.3rem .6rem;box-shadow:0 3px 0 var(--ink)}
+.wow-world-portal span{display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:var(--c);border:2px solid var(--ink)}
+.wow-world-portal:hover{transform:translateY(-2px)}
+.wow-world-lista{list-style:none;padding:0;margin:.4rem 0;display:grid;gap:.25rem}
+.wow-world-lista li{background:var(--bg);border-radius:10px;padding:.3rem .6rem;font-weight:700}
+.wow-world-lista li small{display:block;font-weight:600;opacity:.8}
+.wow-world-lista li.concluida{background:#e1fbee}
+.wow-world-cristais{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.5rem;margin:.4rem 0}
+.wow-world-cristal{display:flex;flex-direction:column;gap:.3rem;align-items:flex-start;background:#f1eefc;border:3px dashed var(--ink);border-radius:14px;padding:.5rem .6rem}
+.wow-world-cristal.aceso{border-style:solid;background:#fff;box-shadow:0 0 0 3px var(--c)}
+.wow-world-cr-ico{font-size:1.6rem}
+.wow-world-cristal:not(.aceso) .wow-world-cr-ico{filter:grayscale(1);opacity:.6}
+.wow-world-cristal select{font:inherit;max-width:100%;border:2px solid var(--ink);border-radius:8px;padding:.15rem}
+.wow-world-cristal label{display:flex;flex-direction:column;font-size:.75rem;font-weight:800;max-width:100%}
+.wow-world-estrelas{position:relative;aspect-ratio:2/1;max-width:30rem;background:radial-gradient(circle,#2b2266,#141036);border:3px solid var(--ink);border-radius:14px;margin:.4rem 0}
+.wow-world-estrela{position:absolute;transform:translate(-50%,-50%);width:2.6rem;height:2.6rem;font-size:1.3rem;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.08);cursor:pointer}
+.wow-world-estrela.on{background:rgba(255,225,77,.5);border-color:#ffe14d;box-shadow:0 0 14px #ffe14d}
+.wow-world-simbolos{display:flex;flex-wrap:wrap;gap:.4rem}
+.wow-world-simbolos .btn.usado{opacity:.5}
+.wow-world-encaixes{display:flex;gap:.5rem;font-size:1.6rem}
+.wow-world-encaixes span{display:grid;place-items:center;width:2.6rem;height:2.6rem;border:3px solid var(--ink);border-radius:50%;background:#fff}
+.wow-world-simbolo-grande{font-size:3rem;text-align:center;margin:.2rem 0}
+/* missões e diário */
+.wow-world-sec-box{background:#fff;border:3px solid var(--ink);border-radius:16px;padding:.7rem .9rem;margin-bottom:.7rem}
+.wow-world-sec-box h3 small{font-size:.8rem;opacity:.7}
+.wow-world-missoes{list-style:none;padding:0;margin:.4rem 0;display:grid;gap:.5rem}
+.wow-world-missao{background:var(--bg);border:3px solid var(--ink);border-radius:14px;padding:.5rem .7rem}
+.wow-world-missao.concluida{background:#e1fbee}
+.wow-world-missao p{margin:.25rem 0;font-weight:600}
+.wow-world-m-cab{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem}
+.wow-world-m-cab span{font-size:1.3rem}
+.wow-world-m-cab em{margin-left:auto;font-style:normal;font-size:.78rem;font-weight:900}
+.wow-world-missoes.compacta .wow-world-missao{padding:.35rem .6rem}
+.wow-world-barra{height:9px;border:2px solid var(--ink);border-radius:99px;background:#fff;overflow:hidden;margin-top:.3rem}
+.wow-world-barra i{display:block;height:100%;background:var(--mint);transition:width .4s}
+.wow-world-diario{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.2rem .7rem;align-items:start}
+.wow-world-simbolos-diario{display:flex;flex-wrap:wrap;gap:.5rem}
+.wow-world-simbolos-diario span{display:flex;flex-direction:column;align-items:center;background:var(--bg);border-radius:12px;padding:.3rem .6rem;font-weight:900;font-size:1.1rem}
+.wow-world-simbolos-diario small{font-size:.68rem;font-weight:600;max-width:12rem;text-align:center}
+.wow-world-simbolos-diario .nao{opacity:.6}
+.wow-world-reg-item{background:var(--bg);border-radius:10px;padding:.35rem .6rem;margin:.25rem 0}
+.wow-world-reg-item summary{cursor:pointer;font-weight:900}
+.wow-world-reg-item p{margin:.3rem 0 0;font-weight:600;font-style:italic}
+/* área com personagem */
+.wow-world-area-box{border:3px solid var(--ink);border-radius:16px;overflow:hidden;box-shadow:0 5px 0 var(--ink);background:#2f7343}
+.wow-world-area-box canvas{display:block;width:100%;outline:none}
+.wow-world-area-box:focus-within{box-shadow:0 0 0 3px var(--sky),0 5px 0 var(--ink)}
+.wow-world-controles{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.8rem;margin:.7rem 0}
+.wow-world-dpad{display:grid;grid-template-columns:repeat(3,3.2rem);grid-template-rows:repeat(2,3.2rem);gap:.25rem;touch-action:none;user-select:none;-webkit-user-select:none}
+.wow-world-dir{font:inherit;font-size:1.2rem;font-weight:900;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:12px;box-shadow:0 3px 0 var(--ink);cursor:pointer;touch-action:none}
+.wow-world-dir.on{background:var(--sun);transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.wow-world-dir.c{grid-column:2;grid-row:1}.wow-world-dir.e{grid-column:1;grid-row:2}.wow-world-dir.b{grid-column:2;grid-row:2}.wow-world-dir.d{grid-column:3;grid-row:2}
+.wow-world-interagir{min-width:min(100%,14rem)}
+.wow-world-dialogo{background:#fff;border:3px solid var(--ink);border-radius:16px;padding:.7rem .9rem;min-height:4.5rem}
+.wow-world-dialogo h4{margin-bottom:.3rem}
+@media (max-width:640px){
+  .wow-world-mapa{aspect-ratio:3/4}
+  .wow-world-regiao{padding:.2rem .35rem;max-width:34%}.wow-world-regiao b{font-size:.68rem}.wow-world-regiao small{display:none}.wow-world-reg-ico{font-size:1.25rem}
+  .wow-world-ponto{padding:.15rem .3rem;max-width:30%}.wow-world-ponto span{font-size:1.15rem}.wow-world-ponto b{font-size:.62rem}
+  .wow-world-cena{aspect-ratio:4/3}
+  .wow-world-controles{justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){
+  .wow-world-reg-ico,.wow-world-ponto.wow-world-novo::after,.wow-world-flash.on span,.wow-world-painel{animation:none!important}
+  .wow-world-regiao,.wow-world-ponto{transition:none}
+}
