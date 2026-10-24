@@ -184,7 +184,8 @@
         <small>🔥 DESAFIO DO DIA</small>
         <h2>“${d.texto}”</h2>${prog}
         ${feito ? `<p class="pf-ok">✅ Desafio concluído! Você ganhou ${DESAFIO_XP} XP. Volte amanhã para um novo.</p>` : `<a class="btn" href="#/${d.jogo}">JOGAR</a>`}
-      </section>`;
+      </section>
+      ${WowGames.Mundo ? WowGames.Mundo.bannerHtml() : ''}`;
   }
 
   /* ---------- Páginas: Perfil e Conquistas ---------- */
