@@ -405,7 +405,7 @@
         completarCopa();
       }
       function mostrarResultadoCopa() {
-        tela = 'resultado';
+        tela = 'resultado'; pararPartida();                               // devolve os cliques da tela aos botões do jogo (Continuar, Ver a chave, Menu)
         const c = S.campanha, u = c.ultimo, cp = c.copa, ganhou = u.r.vencedor === 0;
         const topo = `<div class="lc-res-topo ${ganhou ? 'vit' : 'der'}"><div class="big-emoji">${ganhou ? (cp.campeao || u.fase === 2 ? '🏆' : '🎉') : '😞'}</div>
           <h2>${ganhou ? (u.fase === 2 ? 'CAMPEÃO!' : 'Vitória! Classificado para a ' + R.FASES[u.fase + 1].toLowerCase() + '!') : 'Eliminado ' + NA_FASE[u.fase] + '.'}</h2></div>`;
